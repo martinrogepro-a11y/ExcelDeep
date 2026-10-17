@@ -1,4 +1,4 @@
-import { playJingle, sfx, startPad, stopPad } from '../audio/audio';
+import { logoNote, logoOutro, sfx, startPad, stopPad } from '../audio/audio';
 import { PLAYER, drawSeated, drawStation, drawWalker, lookFor, type RGB } from './art';
 import { filmLook, makeGrain } from './scene';
 
@@ -212,12 +212,12 @@ export function playOrientation(stage: HTMLElement, playerName: string, done: ()
   const total = shots[shots.length - 1].end;
   const stamps = [21300 + 0.08 * 8000, 21300 + 0.3 * 8000, 21300 + 0.55 * 8000];
   const played = new Set<number>();
+  let notesPlayed = 0;
 
   let t0 = 0;
   let raf = 0;
   let finished = false;
   startPad();
-  playJingle();
   const finish = () => {
     if (finished) return;
     finished = true;
@@ -246,10 +246,31 @@ export function playOrientation(stage: HTMLElement, playerName: string, done: ()
       g.fillStyle = PAPER;
       g.textAlign = 'center';
       shot.caption.forEach((line, i) => {
-        g.font = i === 0 && shot.start === 0 ? `600 ${Math.round(20 * u)}px "Pixelify Sans", monospace` : `${Math.round(15 * u)}px "Courier Prime", monospace`;
+        g.font = i === 0 && shot.start === 0 ? `600 ${Math.round(20 * u)}px "DotGothic16", monospace` : `${Math.round(15 * u)}px "Courier Prime", monospace`;
         g.fillText(line, W / 2, H * 0.8 + i * 24 * u);
       });
       g.globalAlpha = 1;
+    }
+    // le son suit le logo : une note par case qui apparaît, une descente quand il s'efface
+    const cellsIn = Math.floor(Math.min(9, (t / shots[0].end) * 14 + 0.0001));
+    while (notesPlayed < cellsIn && notesPlayed < 9) {
+      logoNote(notesPlayed, notesPlayed === 8);
+      notesPlayed++;
+    }
+    const outroAt = shots[0].end - 600;
+    if (t >= outroAt && !played.has(100)) {
+      played.add(100);
+      logoOutro();
+    }
+    const last = shots[shots.length - 1];
+    const lastIn = last.start + 200;
+    if (t >= lastIn && !played.has(101)) {
+      played.add(101);
+      logoNote(8, true);
+    }
+    if (t >= last.start + (last.end - last.start) * 0.75 && !played.has(102)) {
+      played.add(102);
+      logoOutro();
     }
     stamps.forEach((st, i) => {
       if (t >= st && !played.has(i)) {

@@ -219,7 +219,7 @@ export function playCrtBoot(stage: HTMLElement, decor: Decor, mode: 'full' | 'sh
       g.ellipse(0, 90, 46, 6, 0, 0, Math.PI * 2);
       g.fill();
       g.fillStyle = '#9b9277';
-      g.font = '600 8px "Pixelify Sans", monospace';
+      g.font = '600 8px "DotGothic16", monospace';
       g.textAlign = 'left';
       g.fillText('D E E P C O R P', -56, 62);
       g.fillStyle = '#a49b80';
@@ -329,7 +329,7 @@ export function playCrtBoot(stage: HTMLElement, decor: Decor, mode: 'full' | 'sh
       g.fillRect(lx + (i % 3) * cell + 0.6, ly + Math.floor(i / 3) * cell + 0.6, cell - 1.2, cell - 1.2);
     }
     g.fillStyle = '#ffffff';
-    g.font = `600 ${Math.round(sc.w * 0.085)}px "Pixelify Sans", monospace`;
+    g.font = `600 ${Math.round(sc.w * 0.085)}px "DotGothic16", monospace`;
     g.textAlign = 'center';
     g.fillText(decor === 'p1' ? 'DeepOS 95' : decor === 'p2' ? 'DeepOS 2000' : 'DeepOS Horizon', sx, sy + cell * 1.9);
     const bw = sc.w * 0.46;

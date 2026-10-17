@@ -464,3 +464,34 @@ export function startWhine(): void {
 export function stopWhine(): void {
   whine?.stop();
 }
+
+/* ------------------------------------------------------------ logo DeepCorp */
+
+const LOGO_NOTES = [72, 74, 76, 79, 81, 84, 86, 88];
+
+function mallet(f: number, at: number, dur: number, gain: number): void {
+  tone(f, at, dur, { type: 'sine', gain, release: 0.4 });
+  tone(f * 4, at, 0.05, { type: 'sine', gain: gain * 0.25 });
+}
+
+/** Une note par case du logo qui apparaît ; la dernière (la case jaune) sonne un accord un peu faux. */
+export function logoNote(step: number, last: boolean): void {
+  const c = ensure();
+  if (!c || c.state !== 'running' || !sfxOn) return;
+  const t = c.currentTime + 0.01;
+  if (last) {
+    mallet(N(84), t, 1.4, 0.16);
+    mallet(N(91), t, 1.4, 0.08);
+    mallet(N(78), t + 0.02, 1.4, 0.06);
+  } else {
+    mallet(N(LOGO_NOTES[step % LOGO_NOTES.length]), t, 0.22, 0.12);
+  }
+}
+
+/** Le logo s'efface : trois notes qui redescendent. */
+export function logoOutro(): void {
+  const c = ensure();
+  if (!c || c.state !== 'running' || !sfxOn) return;
+  const t = c.currentTime + 0.01;
+  [84, 79, 72].forEach((m, i) => mallet(N(m), t + i * 0.16, 0.5, 0.11));
+}
