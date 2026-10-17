@@ -36,7 +36,7 @@ export const TASKS: Record<StageId, TaskDef> = {
   affranchir: {
     id: 'affranchir',
     name: 'Affranchissement',
-    app: 'Affranchissement',
+    app: 'AffranchiPro 2.0',
     icon: 'scale',
     unitValue: 4,
     baseCost: 60,
@@ -47,7 +47,7 @@ export const TASKS: Record<StageId, TaskDef> = {
   tournees: {
     id: 'tournees',
     name: 'Tournées',
-    app: 'Tournées',
+    app: 'Console de supervision',
     icon: 'bag',
     unitValue: 15,
     baseCost: 900,
@@ -183,7 +183,7 @@ export const MAILS: MailDef[] = [
     from: 'Hale, chef de service',
     subject: 'Bienvenue au poste 117',
     body:
-      "Bienvenue chez DeepCorp.\n\nVotre travail : trier le courrier entrant vers les bons services. Glissez chaque pli dans son casier, ou touchez le casier.\n\nLa pile ne doit jamais déborder.\n\nHale",
+      "Bienvenue chez DeepCorp.\n\nVotre travail : orienter le courrier entrant. Chaque pli est scanné ; lisez le service destinataire et saisissez son code (02 à 06) dans TriPost.\n\nLa pile ne doit jamais déborder.\n\nHale",
     trigger: { kind: 'start' },
   },
   {
@@ -191,7 +191,7 @@ export const MAILS: MailDef[] = [
     from: 'Hale, chef de service',
     subject: 'Petite précision',
     body:
-      "Si un pli n'a pas d'expéditeur, placez-le dans le casier Retour.\n\nNe l'ouvrez pas. Ne le mentionnez pas.\n\nHale",
+      "Si un pli n'a pas d'expéditeur, saisissez le code 99.\n\nNe l'ouvrez pas. Ne le mentionnez pas.\n\nHale",
     trigger: { kind: 'sorted', count: 12 },
   },
   {
@@ -199,7 +199,7 @@ export const MAILS: MailDef[] = [
     from: 'Service informatique',
     subject: 'Macro de tri installée',
     body:
-      "Une macro de tri a été installée sur votre poste. Elle travaille quand vous êtes là.\n\nPour que le tri continue quand vous n'êtes pas là, il faudra embaucher quelqu'un (menu Gestion).",
+      "Le module de défragmentation du courrier est actif sur votre poste. Il travaille quand vous êtes là.\n\nPour que le tri continue quand vous n'êtes pas là, il faudra embaucher quelqu'un (menu Gestion).",
     trigger: { kind: 'assisted', task: 'tri' },
   },
   {
@@ -221,7 +221,7 @@ export const MAILS: MailDef[] = [
     from: 'Hale, chef de service',
     subject: 'Vous passez employé',
     body:
-      "Félicitations. Vous affranchissez désormais les plis triés.\n\nChaque pli est pesé avant affranchissement, sans exception.\n\nHale",
+      "Félicitations. Vous affranchissez désormais les plis triés avec AffranchiPro.\n\nChaque pli est pesé avant impression de l'étiquette, sans exception.\n\nHale",
     trigger: { kind: 'poste', id: 1 },
   },
   {
@@ -236,7 +236,7 @@ export const MAILS: MailDef[] = [
     from: 'Hale, chef de service',
     subject: "Chef d'équipe",
     body:
-      "Vous répartissez maintenant les tournées entre les coursiers.\n\nLes sacs noirs vont au bureau 0-07. Ils sont remis au nouveau et ne sont pas enregistrés.\n\nHale",
+      "Vous supervisez maintenant les tournées depuis la console.\n\nLes sacs noirs vont au bureau 0-07. Ils sont remis au nouveau et ne sont pas enregistrés.\n\nHale",
     trigger: { kind: 'poste', id: 2 },
   },
   {
@@ -248,15 +248,26 @@ export const MAILS: MailDef[] = [
   },
 ];
 
-/** Destinations du tri. Le dernier casier reçoit les plis sans expéditeur. */
-export const SORT_BINS = ['Accueil · 2', 'Archives · 3', 'Compta · 4', 'Achats · 5', 'RH · 6', 'Retour'];
-export const SORT_SERVICES = [
-  { to: 'Accueil', floor: 'Étage 2' },
-  { to: 'Archives', floor: 'Étage 3' },
-  { to: 'Comptabilité', floor: 'Étage 4' },
-  { to: 'Achats', floor: 'Étage 5' },
-  { to: 'Ressources humaines', floor: 'Étage 6' },
+export interface SortService {
+  to: string;
+  floor: string;
+  /** Code à taper dans TriPost. */
+  code: string;
+  /** Façons dont le service est écrit sur les enveloppes. */
+  spellings: string[];
+  color: string;
+}
+
+export const SORT_SERVICES: SortService[] = [
+  { to: 'Accueil', floor: 'Étage 2', code: '02', spellings: ['Service Accueil', 'Accueil / Standard', 'Serv. Accueil'], color: '#3c78d8' },
+  { to: 'Archives', floor: 'Étage 3', code: '03', spellings: ['Service Archives', 'Saisie et archives', 'Archiv.'], color: '#9a7440' },
+  { to: 'Comptabilité', floor: 'Étage 4', code: '04', spellings: ['Service Comptabilité', 'Compta.', 'Dpt Comptable'], color: '#3aa35a' },
+  { to: 'Achats', floor: 'Étage 5', code: '05', spellings: ['Service Achats', 'Achats & logistique', 'Serv. Achats'], color: '#d08a2a' },
+  { to: 'Ressources humaines', floor: 'Étage 6', code: '06', spellings: ['Ressources humaines', 'R.H.', 'Dir. du personnel'], color: '#b04a8a' },
 ];
+/** Les plis sans expéditeur partent au code 99. */
+export const SORT_RETURN = { code: '99', color: '#5a5f63' };
+
 export const SENDERS = ['Fournitures Barel', 'Imprimerie Okto', 'Assurances Veld', 'Cabinet Moreau & Fils', 'Transports Lindqvist', 'Banque Arcan'];
 
 export const TARIFFS = [
@@ -266,11 +277,6 @@ export const TARIFFS = [
   { label: 'Colis', max: 1000 },
 ];
 
-export const COURIERS = [
-  { id: 'owen', name: 'Owen', color: '#c8742b' },
-  { id: 'marta', name: 'Marta', color: '#3f6fc0' },
-  { id: 'nouveau', name: 'Le nouveau', color: '#5d5d5d' },
-];
 
 /* ------------------------------------------------------------------ radio */
 

@@ -2,7 +2,7 @@ import type { MusicStyle } from '../data/content';
 
 // Tout le son est synthétisé : aucun fichier, aucun droit à gérer pour le prototype.
 
-export type Sfx = 'click' | 'paper' | 'drop' | 'stamp' | 'bag' | 'error' | 'cash' | 'notify' | 'bell' | 'fanfare' | 'sign';
+export type Sfx = 'click' | 'paper' | 'drop' | 'stamp' | 'bag' | 'error' | 'cash' | 'notify' | 'bell' | 'fanfare' | 'sign' | 'key' | 'hdd' | 'print' | 'blip' | 'ok';
 
 let ctx: AudioContext | null = null;
 let master: GainNode;
@@ -161,6 +161,27 @@ export function sfx(name: Sfx, soft = false): void {
       break;
     case 'sign':
       noise(t, 0.25, 'bandpass', 2600, 0.12, undefined, 2);
+      break;
+    case 'key':
+      // touche de pavé numérique : un clic plastique
+      noise(t, 0.025, 'bandpass', 3800, 0.25 * v, undefined, 3);
+      tone(420, t, 0.02, { type: 'square', gain: 0.03 * v });
+      break;
+    case 'ok':
+      tone(880, t, 0.05, { type: 'square', gain: 0.05 * v });
+      tone(1320, t + 0.05, 0.08, { type: 'square', gain: 0.05 * v });
+      break;
+    case 'hdd':
+      // tête de disque dur qui cherche
+      noise(t, 0.018, 'bandpass', 1700 + Math.random() * 900, 0.18 * v, undefined, 4);
+      break;
+    case 'print':
+      // un passage de la tête d'imprimante matricielle
+      for (let i = 0; i < 6; i++) noise(t + i * 0.018, 0.012, 'bandpass', 2300 + (i % 2) * 500, 0.16 * v, undefined, 5);
+      tone(160, t, 0.11, { type: 'sawtooth', gain: 0.02 * v });
+      break;
+    case 'blip':
+      tone(1250, t, 0.06, { type: 'sine', gain: 0.07 * v, to: 1500 });
       break;
   }
 }
