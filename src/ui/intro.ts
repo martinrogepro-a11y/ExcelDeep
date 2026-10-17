@@ -1,11 +1,12 @@
 import type { GameState } from '../engine/state';
 import { h, icon } from './dom';
+import { playOrientation } from './orientation';
 import { signaturePad } from './signature';
 
 /** Lettre reçue chez soi → contrat signé au doigt → démarrage du PC du poste 117. */
 export function runIntro(root: HTMLElement, s: GameState, done: () => void): void {
   root.replaceChildren();
-  showLetter(root, () => showContract(root, s, () => showBoot(root, done)));
+  showLetter(root, () => showContract(root, s, () => playOrientation(root, s.playerName, () => showBoot(root, done))));
 }
 
 function showLetter(root: HTMLElement, next: () => void): void {

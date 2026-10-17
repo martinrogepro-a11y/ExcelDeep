@@ -121,7 +121,7 @@ button:disabled { cursor: default; }
 .boot-text { color: #aaa; font-size: 14px; margin: 0; }
 
 /* ------------------------------------------------------------ bureau */
-.desk { position: absolute; inset: 0; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); transition: opacity .5s; }
+.desk { position: absolute; inset: 0; display: flex; flex-direction: column; transition: opacity .5s; }
 .desk.fading { opacity: 0; }
 .desk.p1 { background: var(--teal); }
 .desk.p2 { background: #1d3557 radial-gradient(circle at 25% 25%, rgba(255,255,255,.07) 0 6px, transparent 7px) 0 0 / 38px 38px; }
@@ -352,3 +352,47 @@ button:disabled { cursor: default; }
   .hint { animation: none; }
   .tri .env.flyin, .case.hit, .shake, .cd-disc.spin, .cd-lcd span { animation: none; }
 }
+
+/* ------------------------------------------------------------ le moniteur change avec le grade */
+.monitor { position: absolute; inset: 0; transition: opacity .5s; }
+.monitor.fading { opacity: 0; }
+.monitor .desk { position: absolute; overflow: hidden; padding-top: 0; }
+.chin { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 0 16px calc(env(safe-area-inset-bottom, 0px)); font-size: 10px; letter-spacing: .18em; }
+.chin .model { letter-spacing: .04em; opacity: .7; }
+.chin .led { margin-left: auto; width: 7px; height: 7px; border-radius: 50%; background: #46e05a; box-shadow: 0 0 6px #46e05a; }
+
+/* stagiaire : vieux cathodique beige, écran bombé, gros bord */
+.m-p1 { background: linear-gradient(160deg, #ebe5d1, #cbc3a8); padding-top: env(safe-area-inset-top, 0px); }
+.m-p1 .desk { inset: calc(12px + env(safe-area-inset-top, 0px)) 12px calc(30px + env(safe-area-inset-bottom, 0px)) 12px; border-radius: 22px / 28px; box-shadow: inset 0 0 0 2px #8f876e, 0 0 0 3px #b9b197; }
+.m-p1 .chin { height: calc(30px + env(safe-area-inset-bottom, 0px)); color: #8c836a; font-weight: 600; }
+
+/* employé : écran plus grand, bord gris plus fin */
+.m-p2 { background: linear-gradient(170deg, #d9dad6, #b9bbb6); }
+.m-p2 .desk { inset: calc(7px + env(safe-area-inset-top, 0px)) 7px calc(20px + env(safe-area-inset-bottom, 0px)) 7px; border-radius: 8px; box-shadow: inset 0 0 0 1px #6f726d; }
+.m-p2 .chin { height: calc(20px + env(safe-area-inset-bottom, 0px)); color: #6f726d; }
+.m-p2 .led { background: #f2c14e; box-shadow: 0 0 6px #f2c14e; }
+
+/* chef d'équipe : écran plat noir, bord minimal */
+.m-p3 { background: #17191b; }
+.m-p3 .desk { inset: calc(3px + env(safe-area-inset-top, 0px)) 3px calc(13px + env(safe-area-inset-bottom, 0px)) 3px; border-radius: 2px; }
+.m-p3 .chin { height: calc(13px + env(safe-area-inset-bottom, 0px)); color: #555; font-size: 8px; }
+.m-p3 .led { width: 4px; height: 4px; background: #5ab0ff; box-shadow: 0 0 5px #5ab0ff; }
+
+.sticker { position: absolute; z-index: 32; pointer-events: none; font-size: 10px; }
+.sticker.postit { top: calc(2px + env(safe-area-inset-top, 0px)); right: 18px; background: #ffe866; color: #333; padding: 6px 8px 10px; transform: rotate(5deg); box-shadow: 2px 3px 5px rgba(0,0,0,.3); font-family: 'Courier Prime', monospace; font-weight: 700; }
+.sticker.postit.dark { top: auto; bottom: calc(1px + env(safe-area-inset-bottom, 0px)); right: 30px; transform: rotate(-3deg); padding: 3px 6px; }
+.sticker.inventory { bottom: calc(3px + env(safe-area-inset-bottom, 0px)); right: 34px; background: #f4f4ef; color: #333; padding: 1px 5px; border: 1px solid #999; font-family: 'Courier Prime', monospace; }
+
+/* ------------------------------------------------------------ vue « se lever du poste » */
+.desk-labels { position: absolute; inset: 0; pointer-events: none; }
+.desk-label { position: absolute; left: 0; top: 0; pointer-events: auto; display: grid; gap: 1px; padding: 6px 10px; background: rgba(12,16,18,.78); color: #e6e8e3; border: 1px solid rgba(226,178,60,.8); text-align: left; white-space: nowrap; font-size: 13px; }
+.desk-label small { font-size: 11px; color: #b7bcb6; }
+.desk-label.here { border-color: #e2b23c; box-shadow: 0 0 0 1px #e2b23c; }
+.desk-label.locked { border-color: rgba(200,200,200,.25); color: #7d8380; }
+.building-back { position: absolute; left: 50%; bottom: calc(10% + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); }
+.film-skip { position: absolute; right: 14px; top: calc(9% + env(safe-area-inset-top, 0px)); background: transparent; border: 1px solid rgba(230,232,227,.35); color: rgba(230,232,227,.7); padding: 6px 12px; font-size: 12px; }
+
+/* ------------------------------------------------------------ outils développeur */
+.devmenu { z-index: 80; }
+.dev-body { padding: 12px; display: grid; gap: 8px; max-height: 70vh; overflow: auto; }
+.dev-body h3 { margin: 6px 0 0; font-size: 13px; color: #444; text-transform: uppercase; letter-spacing: .08em; }

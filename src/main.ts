@@ -1,11 +1,16 @@
 import './style.css';
 import { unlockAudio } from './audio/audio';
 import { fmt, fmtDuration } from './engine/format';
+import { ASSIST_LEVEL, CHAIN, POSTES } from './data/content';
 import { deliverMails, offlineProgress, promote, tick } from './engine/sim';
 import { clearSave, loadState, newState, saveState, type GameState } from './engine/state';
+import { openBuilding } from './ui/building';
 import { Desk } from './ui/desk';
+import { openDevMenu } from './ui/dev';
+import { playDezoom } from './ui/dezoom';
 import { h } from './ui/dom';
 import { runIntro } from './ui/intro';
+import { playOrientation } from './ui/orientation';
 import { runPromotion } from './ui/promotion';
 import { applyAudio } from './ui/radio';
 import type { Ctx } from './ui/tasks';
@@ -18,6 +23,10 @@ let s: GameState = loadState(Date.now());
 let desk: Desk | null = null;
 let lastFrame = performance.now();
 let lastSave = Date.now();
+/** Poste où l'on est assis : le sien, ou un ancien poste revisité. */
+let visit = s.poste;
+/** Accélération du temps, réservée au menu développeur. */
+let speed = 1;
 
 const ctx: Ctx = {
   get s() {
@@ -36,8 +45,65 @@ function save(): void {
   lastSave = Date.now();
 }
 
+function leaveDesk(): void {
+  if (!desk) return;
+  desk.element.classList.add('fading');
+  openBuilding(stage, s, visit, (i) => {
+    visit = i;
+    mountDesk();
+  });
+}
+
+function devMenu(): void {
+  openDevMenu(stage, {
+    previewPromotion: () => {
+      if (!desk) return;
+      const from = Math.min(visit, POSTES.length - 1);
+      const last = from + 1 >= POSTES.length;
+      desk.element.classList.add('fading');
+      playDezoom(stage, { from, to: last ? from : from + 1, last, caption: 'APERÇU · AUCUN CHANGEMENT' }, () => {}, () => mountDesk());
+    },
+    openBuilding: leaveDesk,
+    replayIntroFilm: () => playOrientation(stage, s.playerName, () => {}),
+    addCredits: (n) => {
+      s.credits += n;
+      s.earnedTotal += n;
+    },
+    setSpeed: (n) => (speed = n),
+    speed: () => speed,
+    gotoPoste: (i) => {
+      s.poste = i;
+      s.demoDone = false;
+      // les postes précédents sont déjà tenus, comme dans une vraie partie
+      for (const id of CHAIN) {
+        const at = POSTES.findIndex((p) => p.unlocks.includes(id));
+        if (at < i) s.tasks[id] = { level: Math.max(s.tasks[id].level, 25), staff: true };
+        else if (at === i) s.tasks[id] = { level: Math.max(s.tasks[id].level, 0), staff: false };
+      }
+      s.earnedTotal = Math.max(s.earnedTotal, i > 0 ? (POSTES[i - 1].requirement?.earned ?? 0) : 0);
+      visit = i;
+      deliverMails(s, Date.now());
+      save();
+      mountDesk();
+    },
+    automateAll: () => {
+      for (const id of CHAIN) if (POSTES.some((p) => p.id <= s.poste && p.unlocks.includes(id))) s.tasks[id] = { level: Math.max(s.tasks[id].level, ASSIST_LEVEL), staff: true };
+      save();
+      mountDesk();
+    },
+    reset: () => {
+      clearSave();
+      s = newState(Date.now());
+      visit = 0;
+      start();
+    },
+  });
+}
+
 function mountDesk(): void {
   desk = new Desk(stage, ctx, {
+    onLeave: leaveDesk,
+    onDev: devMenu,
     onPromote: () => {
       if (!desk) return;
       runPromotion(
@@ -46,6 +112,7 @@ function mountDesk(): void {
         s,
         () => {
           promote(s);
+          visit = s.poste;
           deliverMails(s, Date.now());
           save();
         },
@@ -59,9 +126,10 @@ function mountDesk(): void {
     onReset: () => {
       clearSave();
       s = newState(Date.now());
+      visit = 0;
       start();
     },
-  });
+  }, visit);
   desk.mount();
   applyAudio(s);
   deliverMails(s, Date.now());
@@ -122,7 +190,7 @@ function frame(t: number): void {
   lastFrame = t;
   if (desk && s.phase === 'desk') {
     const now = Date.now();
-    tick(s, dt, now, true);
+    tick(s, dt * speed, now, true);
     desk.update(now);
     if (now - lastSave > AUTOSAVE_MS) save();
   }
@@ -155,3 +223,4 @@ document.addEventListener(
 
 start();
 requestAnimationFrame(frame);
+if (location.hash === '#dev') setTimeout(devMenu, 500);

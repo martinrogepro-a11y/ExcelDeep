@@ -1,4 +1,4 @@
-import { MAILS, POSTES, TASKS, type StageId } from '../data/content';
+import { CHAIN, MAILS, POSTES, TASKS, type StageId } from '../data/content';
 import { fmt, fmtDuration, fmtRate } from '../engine/format';
 import { autoRate, bottleneck, globalMult, incomeRate, perAction, promotionStatus, stageOf, unlockedChain } from '../engine/sim';
 import { sfx } from '../audio/audio';
@@ -11,6 +11,8 @@ export type ViewId = StageId | 'gestion' | 'mail';
 
 interface Hooks {
   onPromote(): void;
+  onLeave(): void;
+  onDev(): void;
   onSave(): void;
   onReset(): void;
 }
@@ -42,16 +44,25 @@ export class Desk {
   private sfxItem!: HTMLButtonElement;
   private musicItem!: HTMLButtonElement;
   private shownCredits = 0;
+  private root2!: HTMLElement;
+  private clockTaps: number[] = [];
 
   constructor(
     private root: HTMLElement,
     private ctx: Ctx,
     private hooks: Hooks,
+    /** Le poste où l'on est assis : le sien, ou un ancien poste revisité. */
+    private visit: number,
   ) {}
+
+  /** Tâches visibles à ce poste : celles débloquées jusqu'à lui. */
+  private tasksHere(): StageId[] {
+    return CHAIN.filter((id) => POSTES.some((p) => p.id <= this.visit && p.unlocks.includes(id)));
+  }
 
   mount(): void {
     const s = this.ctx.s;
-    const poste = POSTES[s.poste];
+    const poste = POSTES[this.visit];
     this.title = h('span');
     this.credits = h('b');
     this.rate = h('span', { class: 'rate' });
@@ -70,7 +81,12 @@ export class Desk {
     const main = h(
       'div',
       { class: 'win bv main' },
-      h('div', { class: 'tt' }, this.title, h('span', { class: 'tb' }, h('span', { class: 'bv tbtn' }, '_'), h('span', { class: 'bv tbtn' }, '□'))),
+      h(
+        'div',
+        { class: 'tt' },
+        this.title,
+        h('span', { class: 'tb' }, h('button', { class: 'bv tbtn', 'aria-label': 'Se lever du poste', onclick: () => this.hooks.onLeave() }, '_'), h('span', { class: 'bv tbtn' }, '□')),
+      ),
       h('div', { class: 'status' }, h('span', null, 'Crédits ', this.credits), this.rate, this.boost),
       this.chain,
       this.body,
@@ -96,19 +112,38 @@ export class Desk {
     );
 
     this.el = h('div', { class: `desk ${poste.decor}` }, screens, main, taskbar, this.startMenu, this.cd.el, this.fx, this.dialogs);
+    // le moniteur change à chaque grade : boîtier, taille d'écran, ce qui est collé dessus
+    this.root2 = h(
+      'div',
+      { class: `monitor m-${poste.decor}` },
+      this.el,
+      h('div', { class: 'chin' }, h('span', { class: 'brand' }, 'DEEPCORP'), h('span', { class: 'model' }, poste.screen), h('i', { class: 'led' })),
+      poste.decor === 'p1' ? h('div', { class: 'sticker postit' }, 'NE PAS ÉTEINDRE') : null,
+      poste.decor === 'p2' ? h('div', { class: 'sticker inventory' }, 'INV. 4471 · POSTE 117') : null,
+      poste.decor === 'p3' ? h('div', { class: 'sticker postit dark' }, '0-07 → le nouveau') : null,
+    );
+    this.clock.addEventListener('click', () => {
+      // cinq touchers rapides sur l'horloge ouvrent les outils développeur
+      const now = Date.now();
+      this.clockTaps = [...this.clockTaps.filter((t) => now - t < 2500), now];
+      if (this.clockTaps.length >= 5) {
+        this.clockTaps = [];
+        this.hooks.onDev();
+      }
+    });
     // petit clic sur les boutons d'interface ; les gestes de jeu ont leurs propres sons
     this.el.addEventListener('click', (e) => {
       const b = (e.target as Element).closest('button');
       if (b && !b.closest('.case, .tariff, .courier, .bagchip, .express')) sfx('click');
     });
-    this.root.replaceChildren(this.el);
+    this.root.replaceChildren(this.root2);
     this.setView(this.lastTask());
     this.nextExpress = this.ctx.now() + 20_000;
   }
 
   private lastTask(): StageId {
-    const chain = unlockedChain(this.ctx.s);
-    return chain[chain.length - 1];
+    const here = this.tasksHere();
+    return here[here.length - 1];
   }
 
   setView(id: ViewId): void {
@@ -122,7 +157,7 @@ export class Desk {
       this.title.textContent = 'Courrier interne';
     } else {
       this.view = TASK_VIEWS[id](this.ctx);
-      this.title.textContent = `${TASKS[id].app} - Poste 117`;
+      this.title.textContent = `${TASKS[id].app} - Poste 117${this.visit < this.ctx.s.poste ? ' (ancien poste)' : ''}`;
     }
     this.body.replaceChildren(this.view.el);
     this.barKey = '';
@@ -155,6 +190,7 @@ export class Desk {
         { class: 'sm-items' },
         h('button', { onclick: () => this.setView('gestion') }, 'Gestion du poste'),
         h('button', { onclick: () => this.setView('mail') }, 'Courrier interne'),
+        h('button', { onclick: () => ((this.startMenu.hidden = true), this.hooks.onLeave()) }, 'Se lever du poste'),
         this.sfxItem,
         this.musicItem,
         h('button', { onclick: () => (this.hooks.onSave(), (this.startMenu.hidden = true)) }, 'Enregistrer'),
@@ -174,7 +210,7 @@ export class Desk {
     const btn = (id: ViewId, ico: Parameters<typeof icon>[0], label: string, badge?: string) =>
       h('button', { class: `app bv ${this.viewId === id ? 'on' : ''}`, 'aria-label': label, onclick: () => this.setView(id) }, icon(ico), badge ? h('span', { class: 'badge' }, badge) : null);
     this.bar.replaceChildren(
-      ...unlockedChain(s).map((id) => {
+      ...this.tasksHere().map((id) => {
         const b = btn(id, TASKS[id].icon, TASKS[id].name);
         if (stageOf(s, id) !== 'manuel') b.append(h('span', { class: 'dot', 'data-stage': stageOf(s, id) }));
         return b;
@@ -317,6 +353,6 @@ export class Desk {
   }
 
   get element(): HTMLElement {
-    return this.el;
+    return this.root2;
   }
 }
