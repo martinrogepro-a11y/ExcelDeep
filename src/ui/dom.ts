@@ -36,6 +36,8 @@ const ICONS: Record<IconId, string> = {
   mail: '<path d="M2 3h12v8H6l-3 3v-3H2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
   gear: '<circle cx="8" cy="8" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5v2.5M8 12v2.5M1.5 8h2.5M12 8h2.5M3.4 3.4l1.8 1.8M10.8 10.8l1.8 1.8M3.4 12.6l1.8-1.8M10.8 5.2l1.8-1.8" stroke="currentColor" stroke-width="1.5"/>',
   lock: '<rect x="3" y="7" width="10" height="7" fill="currentColor"/><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.6"/>',
+  speaker: '<path d="M2 6h3l4-3v10l-4-3H2z" fill="currentColor"/><path d="M11 5.5a3.5 3.5 0 0 1 0 5M12.5 3.5a6 6 0 0 1 0 9" fill="none" stroke="currentColor" stroke-width="1.3"/>',
+  cd: '<circle cx="8" cy="8" r="6.2" fill="#d9dde3" stroke="currentColor" stroke-width="1.2"/><circle cx="8" cy="8" r="1.6" fill="#fff" stroke="currentColor"/><path d="M8 3a5 5 0 0 1 4.6 3" fill="none" stroke="#7aa0d6" stroke-width="1.2"/>',
   cup: '<path d="M3 5h8v5a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M11 6h1.5a1.5 1.5 0 0 1 0 3H11" fill="none" stroke="currentColor" stroke-width="1.5"/>',
 };
 

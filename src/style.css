@@ -170,7 +170,7 @@ button:disabled { cursor: default; }
 
 /* ------------------------------------------------------------ tri */
 .desk-wood { position: relative; flex: 1; grid-template-rows: minmax(150px, 1fr) auto; align-content: stretch; padding: 18px 10px 10px; background: var(--wood) repeating-linear-gradient(90deg, rgba(0,0,0,.08) 0 2px, transparent 2px 34px); display: grid; gap: 12px; }
-.pile { position: relative; min-height: 140px; max-height: 230px; }
+.pile { position: relative; min-height: 140px; max-height: 180px; }
 .tri .env { position: absolute; inset: 0 22px; background: #f7f1e1; box-shadow: 0 3px 6px rgba(0,0,0,.35); padding: 12px 14px; font-family: var(--doc); font-size: 15px; color: #222; touch-action: none; }
 .tri .env:not(.under):not(.under2) { cursor: grab; z-index: 2; }
 .tri .env.dragging { transition: none; box-shadow: 0 14px 22px rgba(0,0,0,.45); cursor: grabbing; z-index: 5; }
@@ -293,35 +293,62 @@ button:disabled { cursor: default; }
 .avenant .pad { height: 90px; }
 
 /* ------------------------------------------------------------ dézoom */
-.dezoom { position: absolute; inset: 0; z-index: 60; background: #1b1f22; overflow: hidden; transition: opacity .4s; }
+.dezoom { position: absolute; inset: 0; z-index: 60; background: #141b20; overflow: hidden; transition: opacity .5s; }
 .dezoom.out { opacity: 0; }
-.cam { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
-.bldg { position: relative; background: #d8d2c2; box-shadow: 0 0 0 3px #8c8577; }
-.roof { position: absolute; left: 0; right: 0; top: 0; background: #3a3f44; color: #f2c14e; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 10px; letter-spacing: .2em; }
-.roof .ico { width: 10px; height: 10px; }
-.floor { position: absolute; left: 0; right: 0; border-top: 2px solid #8c8577; background: linear-gradient(180deg, #e9e4d6, #d8d2c2); }
-.floor.lit { background: linear-gradient(180deg, #fff6d8, #efe4c0); }
-.floor.basement { left: 30px; right: 30px; background: #2d2f31; border: 1px dashed #f2c14e; }
-.flabel { position: absolute; left: 4px; top: 3px; font-size: 7px; color: #6b6458; }
-.basement .flabel { color: #f2c14e; }
-.ground { position: absolute; left: -40px; right: -40px; height: 0; border-top: 3px solid #5b5448; }
-.mini-desk { position: absolute; height: 22px; }
-.mini-desk .mon { position: absolute; left: 50%; top: 0; width: 18px; height: 13px; margin-left: -9px; border: 1.5px solid #ddd6bf; box-shadow: 0 0 0 .5px #555; }
-.mini-desk .table { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: #8a6440; }
-.seat { position: absolute; width: 12px; height: 22px; transition: left .9s ease-in-out; }
-.seat.arrive { animation: arrive .6s both; }
-@keyframes arrive { from { opacity: 0; transform: translateX(-10px); } }
-.person { position: relative; width: 12px; height: 22px; }
-.person .head { position: absolute; left: 3px; top: 0; width: 6px; height: 6px; border-radius: 50%; background: #e0b48a; }
-.person .body { position: absolute; left: 1px; top: 6px; width: 10px; height: 11px; border-radius: 3px 3px 0 0; background: #7d7d7d; }
-.person.g1 .body { background: #3f6fc0; }
-.person.g2 .body { background: #2b2f36; box-shadow: inset 4px 0 0 #2b2f36, inset 6px 0 0 #fff; }
-.person.g2 .body::after { content: ''; position: absolute; left: 4px; top: 1px; width: 2px; height: 6px; background: #b00020; }
-.person.me .head { box-shadow: 0 0 0 1px #f2c14e; }
-.skip { position: absolute; left: 0; right: 0; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); text-align: center; color: #9aa; font-size: 13px; margin: 0; }
+.dezoom-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.skip { position: absolute; left: 0; right: 0; top: calc(8.5% + env(safe-area-inset-top, 0px)); text-align: center; color: rgba(220,225,220,.45); font-size: 12px; margin: 0; }
+
+/* ------------------------------------------------------------ curseur fantôme */
+.ghost { position: absolute; left: 0; top: 0; z-index: 20; pointer-events: none; will-change: transform; filter: drop-shadow(1px 2px 0 rgba(0,0,0,.35)); }
+.ghost svg { display: block; transform-origin: 2px 2px; }
+.ghost.press svg { animation: press .18s; }
+@keyframes press { 50% { transform: scale(.8); } }
+.ghost-tag { position: absolute; left: 14px; top: 22px; color: #fff; font-size: 11px; padding: 0 5px; white-space: nowrap; }
+.flycopy { position: absolute; margin: 0 !important; inset: auto !important; z-index: 15; pointer-events: none; }
+.flycopy.rain { width: 60px !important; height: 34px !important; }
+.float.ghosty { background: rgba(0,0,128,.75); font-size: 12px; }
+
+/* ------------------------------------------------------------ retours de geste */
+.case { position: relative; overflow: hidden; }
+.case .slot { position: absolute; left: 10%; right: 10%; top: 6px; height: 4px; background: #2a1d12; border-radius: 2px; }
+.affr .parcel { transition: transform .22s cubic-bezier(.5,0,.75,0), opacity .22s; }
+.affr .parcel.in { animation: dropin .28s cubic-bezier(.3,1.4,.6,1); }
+@keyframes dropin { from { transform: translateY(-40px); opacity: 0; } }
+.affr .parcel.out { transform: translateX(180px) rotate(8deg); opacity: 0; }
+.affr .parcel[data-size='0'] { width: 70px; height: 16px; background: #efe6cf; border-color: #b9ab8a; }
+.affr .parcel[data-size='0']::before { display: none; }
+.affr .parcel[data-size='1'] { width: 78px; height: 24px; background: #e8dcbc; }
+.affr .parcel[data-size='3'] { width: 112px; height: 44px; }
+.parcel .label { position: relative; z-index: 1; }
+.stampmark { position: absolute; z-index: 2; color: #b00020; border: 2px solid #b00020; padding: 0 4px; font-size: 11px; font-weight: 600; letter-spacing: .08em; opacity: 0; transform: rotate(var(--r, -6deg)) scale(2.4); }
+.stampmark.on { animation: stamp .2s cubic-bezier(.3,1.6,.5,1) forwards; }
+@keyframes stamp { to { opacity: .9; transform: rotate(var(--r, -6deg)) scale(1); } }
+.scale.thump { animation: thump .16s; }
+@keyframes thump { 40% { transform: translateY(3px); } }
+.tariff.pressed { animation: pressed .2s; }
+@keyframes pressed { 30% { box-shadow: inset 1px 1px #0a0a0a, inset -1px -1px #fff, inset 2px 2px var(--dark); background: #b8b8b8; } }
+
+/* ------------------------------------------------------------ zone de notification, lecteur CD */
+.tray { display: flex; align-items: center; gap: 2px; height: 42px; padding: 0 2px; box-shadow: inset 1px 1px var(--dark), inset -1px -1px #fff; }
+.tray .clock { box-shadow: none; padding: 0 4px; }
+.trayicon { width: 28px; height: 30px; display: grid; place-items: center; border: 0; background: transparent; padding: 0; }
+.trayicon .ico { width: 18px; height: 18px; }
+.trayicon.muted { opacity: .4; }
+.cdplayer { position: absolute; right: 4px; bottom: calc(58px + env(safe-area-inset-bottom, 0px)); z-index: 40; width: 250px; max-width: calc(100% - 8px); padding: 10px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.cd-top { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.cd-disc { width: 46px; height: 46px; flex: none; border-radius: 50%; background: conic-gradient(from 0deg, #c9ced6, #f2f4f7, #b8c6dd, #eef0e6, #c9ced6); box-shadow: inset 0 0 0 16px transparent, 0 0 0 1px #777; position: relative; }
+.cd-disc::after { content: ''; position: absolute; inset: 17px; border-radius: 50%; background: var(--grey); box-shadow: 0 0 0 1px #777; }
+.cd-disc.spin { animation: spin 1.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.cd-lcd { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; background: #9fc28a; color: #16300f; font-family: 'Courier New', monospace; font-weight: 700; font-size: 13px; padding: 6px 8px; box-shadow: inset 0 0 0 2px #5e7a4f; }
+.cd-lcd span { display: inline-block; padding-left: 100%; animation: marquee 9s linear infinite; }
+@keyframes marquee { to { transform: translateX(-100%); } }
+.cd-btns { display: flex; gap: 6px; }
+.cd-btns button { flex: 1; height: 38px; font-size: 16px; }
+.cd-note { margin: 0; font-size: 11px; color: #444; }
 
 @media (prefers-reduced-motion: reduce) {
   .express { animation-duration: 12s; }
   .hint { animation: none; }
-  .tri .env.flyin, .case.hit, .shake { animation: none; }
+  .tri .env.flyin, .case.hit, .shake, .cd-disc.spin, .cd-lcd span { animation: none; }
 }

@@ -2,7 +2,7 @@
 // Ajouter un étage = ajouter des tâches, des postes, des fournitures et des mails.
 
 export type StageId = 'tri' | 'affranchir' | 'tournees';
-export type IconId = 'logo' | 'sort' | 'scale' | 'bag' | 'mail' | 'gear' | 'lock' | 'cup';
+export type IconId = 'logo' | 'sort' | 'scale' | 'bag' | 'mail' | 'gear' | 'lock' | 'cup' | 'speaker' | 'cd';
 
 export interface TaskDef {
   id: StageId;
@@ -270,4 +270,38 @@ export const COURIERS = [
   { id: 'owen', name: 'Owen', color: '#c8742b' },
   { id: 'marta', name: 'Marta', color: '#3f6fc0' },
   { id: 'nouveau', name: 'Le nouveau', color: '#5d5d5d' },
+];
+
+/* ------------------------------------------------------------------ radio */
+
+export type MusicStyle = 'ascenseur' | 'lofi' | 'synth';
+export type DeviceId = 'cd' | 'media' | 'stream';
+
+export interface DeviceDef {
+  id: DeviceId;
+  name: string;
+  cost: number;
+  minPoste: number;
+}
+
+/** Un appareil par époque : le lecteur CD d'abord, les suivants arrivent avec les étages. */
+export const DEVICES: DeviceDef[] = [
+  { id: 'cd', name: 'Lecteur CD portable', cost: 400, minPoste: 0 },
+  { id: 'media', name: 'DeepMedia Player', cost: 250000, minPoste: 6 },
+  { id: 'stream', name: 'Streamly', cost: 50_000_000, minPoste: 12 },
+];
+
+export interface TrackDef {
+  id: string;
+  title: string;
+  artist: string;
+  style: MusicStyle;
+  device: DeviceId;
+  cost: number;
+}
+
+export const TRACKS: TrackDef[] = [
+  { id: 'attente', title: 'Musique d’attente, vol. 1', artist: 'Orchestre du standard', style: 'ascenseur', device: 'cd', cost: 0 },
+  { id: 'dejeuner', title: 'Pause déjeuner', artist: 'Les Intérimaires', style: 'lofi', device: 'cd', cost: 900 },
+  { id: 'disquette', title: 'Disquette', artist: 'Modem 56k', style: 'synth', device: 'cd', cost: 3500 },
 ];

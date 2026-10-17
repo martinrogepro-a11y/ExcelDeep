@@ -1,8 +1,10 @@
 import { MAILS, POSTES, TASKS, type StageId } from '../data/content';
 import { fmt, fmtDuration, fmtRate } from '../engine/format';
 import { autoRate, bottleneck, globalMult, incomeRate, perAction, promotionStatus, stageOf, unlockedChain } from '../engine/sim';
+import { sfx } from '../audio/audio';
 import { floatText, h, icon, win } from './dom';
 import { gestionView, mailView } from './panels';
+import { applyAudio, CdPlayer } from './radio';
 import { TASK_VIEWS, type Ctx, type View } from './tasks';
 
 export type ViewId = StageId | 'gestion' | 'mail';
@@ -34,6 +36,12 @@ export class Desk {
   private barKey = '';
   private chainKey = '';
   private nextExpress = 0;
+  private tray!: HTMLElement;
+  private trayKey = '';
+  private cd!: CdPlayer;
+  private sfxItem!: HTMLButtonElement;
+  private musicItem!: HTMLButtonElement;
+  private shownCredits = 0;
 
   constructor(
     private root: HTMLElement,
@@ -54,7 +62,10 @@ export class Desk {
     this.dialogs = h('div', { class: 'dialogs' });
     this.clock = h('span', { class: 'clock' });
     this.bar = h('div', { class: 'apps' });
+    this.cd = new CdPlayer(this.ctx);
+    this.tray = h('div', { class: 'tray' });
     this.startMenu = this.buildStartMenu();
+    this.shownCredits = s.credits;
 
     const main = h(
       'div',
@@ -81,10 +92,15 @@ export class Desk {
       { class: 'taskbar bv' },
       h('button', { class: 'start bv', onclick: () => this.startMenu.toggleAttribute('hidden') }, icon('logo'), 'DeepCorp'),
       this.bar,
-      this.clock,
+      this.tray,
     );
 
-    this.el = h('div', { class: `desk ${poste.decor}` }, screens, main, taskbar, this.startMenu, this.fx, this.dialogs);
+    this.el = h('div', { class: `desk ${poste.decor}` }, screens, main, taskbar, this.startMenu, this.cd.el, this.fx, this.dialogs);
+    // petit clic sur les boutons d'interface ; les gestes de jeu ont leurs propres sons
+    this.el.addEventListener('click', (e) => {
+      const b = (e.target as Element).closest('button');
+      if (b && !b.closest('.case, .tariff, .courier, .bagchip, .express')) sfx('click');
+    });
     this.root.replaceChildren(this.el);
     this.setView(this.lastTask());
     this.nextExpress = this.ctx.now() + 20_000;
@@ -115,6 +131,20 @@ export class Desk {
   }
 
   private buildStartMenu(): HTMLElement {
+    this.sfxItem = h('button', {
+      onclick: () => {
+        this.ctx.s.settings.sfx = !this.ctx.s.settings.sfx;
+        applyAudio(this.ctx.s);
+        this.ctx.acted();
+      },
+    });
+    this.musicItem = h('button', {
+      onclick: () => {
+        this.ctx.s.settings.music = !this.ctx.s.settings.music;
+        applyAudio(this.ctx.s);
+        this.ctx.acted();
+      },
+    });
     const confirm = h('button', { class: 'danger', hidden: true, onclick: () => this.hooks.onReset() }, 'Confirmer : tout effacer');
     return h(
       'div',
@@ -125,6 +155,8 @@ export class Desk {
         { class: 'sm-items' },
         h('button', { onclick: () => this.setView('gestion') }, 'Gestion du poste'),
         h('button', { onclick: () => this.setView('mail') }, 'Courrier interne'),
+        this.sfxItem,
+        this.musicItem,
         h('button', { onclick: () => (this.hooks.onSave(), (this.startMenu.hidden = true)) }, 'Enregistrer'),
         h('button', { onclick: () => confirm.toggleAttribute('hidden') }, 'Recommencer depuis le début…'),
         confirm,
@@ -205,6 +237,7 @@ export class Desk {
         text = `+${fmt(gain)} crédits`;
       }
       floatText(this.fx, text, r.left - a.left + r.width / 2, r.top - a.top, 'big');
+      sfx('bell');
       el.remove();
       this.ctx.acted();
     });
@@ -212,9 +245,41 @@ export class Desk {
     this.fx.append(el);
   }
 
+  private renderTray(): void {
+    const s = this.ctx.s;
+    const muted = !s.settings.sfx && !s.settings.music;
+    const key = `${s.radio.device}|${muted}`;
+    this.sfxItem.textContent = `Bruitages : ${s.settings.sfx ? 'activés' : 'coupés'}`;
+    this.musicItem.textContent = `Musique : ${s.settings.music ? 'activée' : 'coupée'}`;
+    if (key === this.trayKey) return;
+    this.trayKey = key;
+    const speaker = h(
+      'button',
+      {
+        class: `trayicon ${muted ? 'muted' : ''}`,
+        'aria-label': muted ? 'Activer le son' : 'Couper le son',
+        onclick: () => {
+          const on = !s.settings.sfx && !s.settings.music;
+          s.settings.sfx = on;
+          s.settings.music = on;
+          applyAudio(s);
+          this.ctx.acted();
+        },
+      },
+      icon('speaker'),
+    );
+    const cdBtn = s.radio.device
+      ? h('button', { class: 'trayicon', 'aria-label': 'Lecteur CD', onclick: () => (this.cd.el.toggleAttribute('hidden'), this.cd.sync()) }, icon('cd'))
+      : null;
+    this.tray.replaceChildren(...[cdBtn, speaker, this.clock].filter((x): x is HTMLElement => !!x));
+  }
+
   update(now: number): void {
     const s = this.ctx.s;
-    this.credits.textContent = fmt(s.credits);
+    // le compteur roule vers la vraie valeur au lieu de sauter
+    const diff = s.credits - this.shownCredits;
+    this.shownCredits = Math.abs(diff) < 1 ? s.credits : this.shownCredits + diff * 0.25;
+    this.credits.textContent = fmt(this.shownCredits);
     const inc = incomeRate(s, now);
     this.rate.textContent = inc > 0 ? `+${fmtRate(inc)}/s` : '';
     const boosts: string[] = [];
@@ -225,6 +290,8 @@ export class Desk {
     this.clock.textContent = new Date(now).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     this.renderBar();
     this.renderChain();
+    this.renderTray();
+    if (!this.cd.el.hidden) this.cd.sync();
     this.view?.update(now);
     this.express(now);
   }
@@ -239,6 +306,7 @@ export class Desk {
   }
 
   notifyMail(ids: string[]): void {
+    if (ids.length) sfx('notify');
     for (const id of ids) {
       const m = MAILS.find((x) => x.id === id);
       if (!m || id === 'bienvenue') continue;

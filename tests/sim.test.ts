@@ -152,3 +152,24 @@ describe('promotion', () => {
     expect(s.demoDone).toBe(true);
   });
 });
+
+describe('radio', () => {
+  it('le lecteur CD est livré avec son disque gratuit', async () => {
+    const { buyDevice, buyTrack } = await import('../src/engine/sim');
+    const s = fresh();
+    s.credits = 400;
+    expect(buyDevice(s, 'cd')).toBe(true);
+    expect(s.radio.owned).toEqual(['attente']);
+    expect(s.radio.current).toBe('attente');
+    expect(buyTrack(s, 'dejeuner')).toBe(false);
+    s.credits = 900;
+    expect(buyTrack(s, 'dejeuner')).toBe(true);
+  });
+
+  it('les appareils des époques suivantes restent verrouillés', async () => {
+    const { buyDevice } = await import('../src/engine/sim');
+    const s = fresh();
+    s.credits = 1e12;
+    expect(buyDevice(s, 'media')).toBe(false);
+  });
+});

@@ -16,7 +16,9 @@ import {
   stageOf,
   unlockedChain,
 } from '../engine/sim';
+import { sfx } from '../audio/audio';
 import { h } from './dom';
+import { radioCard } from './radio';
 import type { Ctx, View } from './tasks';
 
 const STAGE_LABEL = { manuel: 'Manuel', assiste: 'Assisté', auto: 'Automatique' } as const;
@@ -31,7 +33,7 @@ export function gestionView(ctx: Ctx, onPromote: () => void): View {
 
   const structureKey = () => {
     const s = ctx.s;
-    return [s.poste, s.demoDone, s.supplies.join(','), unlockedChain(s).map((id) => `${id}:${s.tasks[id].staff}`).join(',')].join('|');
+    return [s.poste, s.demoDone, s.supplies.join(','), s.radio.device, s.radio.owned.join(','), unlockedChain(s).map((id) => `${id}:${s.tasks[id].staff}`).join(',')].join('|');
   };
 
   const build = () => {
@@ -66,7 +68,10 @@ export function gestionView(ctx: Ctx, onPromote: () => void): View {
       for (const d of supplies) {
         const btn = h('button', { class: 'bv btn small' }, fmt(d.cost));
         btn.addEventListener('click', () => {
-          if (buySupply(ctx.s, d.id)) ctx.acted();
+          if (buySupply(ctx.s, d.id)) {
+            sfx('cash');
+            ctx.acted();
+          }
         });
         list.append(h('div', { class: 'supply' }, h('div', null, h('b', null, d.name), h('small', null, d.desc)), btn));
         updaters.push(() => (btn.disabled = ctx.s.credits < d.cost));
@@ -80,7 +85,10 @@ export function gestionView(ctx: Ctx, onPromote: () => void): View {
     const ad = h('button', { class: 'bv btn' });
     const timer = h('p', { class: 'muted' });
     drink.addEventListener('click', () => {
-      if (drinkCafe(ctx.s, ctx.now())) ctx.acted();
+      if (drinkCafe(ctx.s, ctx.now())) {
+        sfx('cash');
+        ctx.acted();
+      }
     });
     ad.addEventListener('click', () => {
       const now = ctx.now();
@@ -110,6 +118,10 @@ export function gestionView(ctx: Ctx, onPromote: () => void): View {
       timer.textContent = st.cafeUntil > now ? `Café en cours : encore ${fmtDuration((st.cafeUntil - now) / 1000)}` : '';
     });
 
+    const radio = radioCard(ctx);
+    blocks.push(radio.el);
+    updaters.push(radio.update);
+
     const scroll = el.scrollTop;
     el.replaceChildren(...blocks);
     el.scrollTop = scroll;
@@ -126,7 +138,10 @@ export function gestionView(ctx: Ctx, onPromote: () => void): View {
       const b = h('button', { class: 'bv btn small' });
       b.addEventListener('click', () => {
         const qty = n === 'max' ? maxAffordable(ctx.s, id) : n;
-        if (buyLevels(ctx.s, id, qty)) ctx.acted();
+        if (buyLevels(ctx.s, id, qty)) {
+          sfx('cash');
+          ctx.acted();
+        }
       });
       return b;
     };
@@ -135,7 +150,10 @@ export function gestionView(ctx: Ctx, onPromote: () => void): View {
     const bmax = mk('max');
     const hireBtn = h('button', { class: 'bv btn small hire' });
     hireBtn.addEventListener('click', () => {
-      if (hire(ctx.s, id)) ctx.acted();
+      if (hire(ctx.s, id)) {
+        sfx('fanfare');
+        ctx.acted();
+      }
     });
     const card = h(
       'section',

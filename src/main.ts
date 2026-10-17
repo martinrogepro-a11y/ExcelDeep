@@ -1,4 +1,5 @@
 import './style.css';
+import { unlockAudio } from './audio/audio';
 import { fmt, fmtDuration } from './engine/format';
 import { deliverMails, offlineProgress, promote, tick } from './engine/sim';
 import { clearSave, loadState, newState, saveState, type GameState } from './engine/state';
@@ -6,6 +7,7 @@ import { Desk } from './ui/desk';
 import { h } from './ui/dom';
 import { runIntro } from './ui/intro';
 import { runPromotion } from './ui/promotion';
+import { applyAudio } from './ui/radio';
 import type { Ctx } from './ui/tasks';
 
 const AUTOSAVE_MS = 10_000;
@@ -61,6 +63,7 @@ function mountDesk(): void {
     },
   });
   desk.mount();
+  applyAudio(s);
   deliverMails(s, Date.now());
   desk.update(Date.now());
 }
@@ -139,6 +142,16 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 window.addEventListener('pagehide', () => s.phase === 'desk' && save());
+
+// les navigateurs n'autorisent le son qu'après un premier geste
+document.addEventListener(
+  'pointerdown',
+  () => {
+    unlockAudio();
+    applyAudio(s);
+  },
+  { capture: true },
+);
 
 start();
 requestAnimationFrame(frame);

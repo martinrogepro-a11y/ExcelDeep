@@ -1,4 +1,4 @@
-import { CHAIN, type StageId } from '../data/content';
+import { CHAIN, type DeviceId, type StageId } from '../data/content';
 
 export interface TaskState {
   level: number;
@@ -33,6 +33,8 @@ export interface GameState {
   lastSeen: number;
   adReadyAt: number;
   demoDone: boolean;
+  settings: { sfx: boolean; music: boolean };
+  radio: { device: DeviceId | null; owned: string[]; current: string | null; playing: boolean };
 }
 
 const SAVE_KEY = 'deepcorp-save-v1';
@@ -65,6 +67,8 @@ export function newState(now: number): GameState {
     lastSeen: now,
     adReadyAt: 0,
     demoDone: false,
+    settings: { sfx: true, music: true },
+    radio: { device: null, owned: [], current: null, playing: false },
   };
 }
 
@@ -81,6 +85,8 @@ export function loadState(now: number): GameState {
       ...parsed,
       tasks: { ...base.tasks, ...parsed.tasks },
       buffers: { ...base.buffers, ...parsed.buffers },
+      settings: { ...base.settings, ...parsed.settings },
+      radio: { ...base.radio, ...parsed.radio },
     } as GameState;
   } catch {
     return newState(now);

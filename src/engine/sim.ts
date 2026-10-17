@@ -7,12 +7,15 @@ import {
   CHAIN,
   COMBO_STEP,
   COST_GROWTH,
+  DEVICES,
   MAILS,
   MILESTONES,
   POSTES,
   STAFF_FACTOR,
   SUPPLIES,
   TASKS,
+  TRACKS,
+  type DeviceId,
   type MailTrigger,
   type StageId,
   type SupplyDef,
@@ -341,4 +344,25 @@ export function deliverMails(s: GameState, now: number): string[] {
     }
   }
   return fresh;
+}
+
+/* ------------------------------------------------------------------ radio */
+
+export function buyDevice(s: GameState, id: DeviceId): boolean {
+  const d = DEVICES.find((x) => x.id === id);
+  if (!d || s.radio.device === id || d.minPoste > s.poste || s.credits < d.cost) return false;
+  s.credits -= d.cost;
+  s.radio.device = id;
+  // l'appareil est livré avec les disques gratuits
+  for (const t of TRACKS) if (t.device === id && t.cost === 0 && !s.radio.owned.includes(t.id)) s.radio.owned.push(t.id);
+  s.radio.current ??= s.radio.owned[0] ?? null;
+  return true;
+}
+
+export function buyTrack(s: GameState, id: string): boolean {
+  const t = TRACKS.find((x) => x.id === id);
+  if (!t || !s.radio.device || s.radio.owned.includes(id) || s.credits < t.cost) return false;
+  s.credits -= t.cost;
+  s.radio.owned.push(id);
+  return true;
 }
