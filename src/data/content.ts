@@ -146,18 +146,18 @@ export interface SupplyDef {
 }
 
 export const SUPPLIES: SupplyDef[] = [
-  { id: 'coupe-papier', name: 'Coupe-papier en laiton', desc: 'Tri ×2. Il coupe aussi les doutes.', cost: 120, minPoste: 0, effect: { kind: 'taskMult', task: 'tri', factor: 2 } },
-  { id: 'chaise', name: 'Chaise qui ne grince plus', desc: 'Combo max +2.', cost: 350, minPoste: 0, effect: { kind: 'combo', add: 2 } },
+  { id: 'coupe-papier', name: 'Coupe-papier en laiton', desc: 'Tri ×2.', cost: 120, minPoste: 0, effect: { kind: 'taskMult', task: 'tri', factor: 2 } },
+  { id: 'chaise', name: 'Chaise ergonomique', desc: 'Combo max +2.', cost: 350, minPoste: 0, effect: { kind: 'combo', add: 2 } },
   { id: 'casier-nuit', name: 'Casier de nuit', desc: 'Production hors ligne : +2 h de plafond.', cost: 800, minPoste: 0, effect: { kind: 'offline', hours: 2 } },
-  { id: 'etiquettes', name: 'Casiers étiquetés', desc: 'Tri ×2. Quelqu’un a déjà étiqueté le casier « -1 ».', cost: 1400, minPoste: 0, effect: { kind: 'taskMult', task: 'tri', factor: 2 } },
+  { id: 'etiquettes', name: 'Casiers étiquetés', desc: 'Tri ×2.', cost: 1400, minPoste: 0, effect: { kind: 'taskMult', task: 'tri', factor: 2 } },
   { id: 'tampon', name: 'Tampon encreur neuf', desc: 'Affranchissement ×2.', cost: 2500, minPoste: 1, effect: { kind: 'taskMult', task: 'affranchir', factor: 2 } },
   { id: 'etagere', name: 'Étagère de transit', desc: 'Stock entre deux étapes : +150.', cost: 5000, minPoste: 1, effect: { kind: 'buffer', add: 150 } },
   { id: 'machine-cafe', name: 'Machine à café du service', desc: 'Les cafés durent 15 min au lieu de 10.', cost: 8000, minPoste: 1, effect: { kind: 'cafe', minutes: 5 } },
-  { id: 'balance', name: 'Balance de précision', desc: 'Affranchissement ×2. Elle affiche parfois un poids négatif.', cost: 18000, minPoste: 1, effect: { kind: 'taskMult', task: 'affranchir', factor: 2 } },
-  { id: 'plante', name: 'Plante verte', desc: 'Toute la production ×1,25. Personne ne sait qui l’arrose.', cost: 30000, minPoste: 1, effect: { kind: 'global', factor: 1.25 } },
+  { id: 'balance', name: 'Balance de précision', desc: 'Affranchissement ×2.', cost: 18000, minPoste: 1, effect: { kind: 'taskMult', task: 'affranchir', factor: 2 } },
+  { id: 'plante', name: 'Plante verte', desc: 'Toute la production ×1,25.', cost: 30000, minPoste: 1, effect: { kind: 'global', factor: 1.25 } },
   { id: 'planning', name: 'Planning mural', desc: 'Tournées ×2.', cost: 70000, minPoste: 2, effect: { kind: 'taskMult', task: 'tournees', factor: 2 } },
   { id: 'casier-nuit-2', name: 'Grand casier de nuit', desc: 'Production hors ligne : +4 h de plafond.', cost: 120000, minPoste: 2, effect: { kind: 'offline', hours: 4 } },
-  { id: 'chariot', name: 'Chariot à roulettes', desc: 'Tournées ×2. Une roue tourne toute seule.', cost: 300000, minPoste: 2, effect: { kind: 'taskMult', task: 'tournees', factor: 2 } },
+  { id: 'chariot', name: 'Chariot à roulettes', desc: 'Tournées ×2.', cost: 300000, minPoste: 2, effect: { kind: 'taskMult', task: 'tournees', factor: 2 } },
 ];
 
 export type MailTrigger =
@@ -206,14 +206,14 @@ export const MAILS: MailDef[] = [
     id: 'leo',
     from: 'Ressources humaines',
     subject: 'Arrivée de Leo',
-    body: "Leo rejoint le service Courrier. Il tiendra le tri, même la nuit.\n\nSurtout la nuit.",
+    body: "Leo rejoint le service Courrier à compter d'aujourd'hui. Il est affecté au tri, horaires de nuit compris.",
     trigger: { kind: 'staff', task: 'tri' },
   },
   {
     id: 'etrange',
     from: '(aucun expéditeur)',
     subject: '(sans objet)',
-    body: 'Bien reçu.',
+    body: 'Reçu.',
     trigger: { kind: 'odd' },
   },
   {
@@ -221,14 +221,14 @@ export const MAILS: MailDef[] = [
     from: 'Hale, chef de service',
     subject: 'Vous passez employé',
     body:
-      "Félicitations. Vous affranchissez désormais les plis triés.\n\nPesez bien. Certains colis pèsent plus lourd qu'ils ne devraient.\n\nHale",
+      "Félicitations. Vous affranchissez désormais les plis triés.\n\nChaque pli est pesé avant affranchissement, sans exception.\n\nHale",
     trigger: { kind: 'poste', id: 1 },
   },
   {
     id: 'nina',
     from: 'Ressources humaines',
     subject: 'Arrivée de Nina',
-    body: "Nina rejoint le service Courrier et prend l'affranchissement. Elle a demandé à ne pas avoir de fenêtre.",
+    body: "Nina rejoint le service Courrier et reprend l'affranchissement. Merci de lui transmettre vos consignes.",
     trigger: { kind: 'staff', task: 'affranchir' },
   },
   {
@@ -236,14 +236,14 @@ export const MAILS: MailDef[] = [
     from: 'Hale, chef de service',
     subject: "Chef d'équipe",
     body:
-      "Vous répartissez maintenant les tournées entre les coursiers.\n\nLes sacs noirs vont au bureau 0-07. Seul le nouveau les prend. Ne lui demandez pas où se trouve ce bureau.\n\nHale",
+      "Vous répartissez maintenant les tournées entre les coursiers.\n\nLes sacs noirs vont au bureau 0-07. Ils sont remis au nouveau et ne sont pas enregistrés.\n\nHale",
     trigger: { kind: 'poste', id: 2 },
   },
   {
     id: 'sac-noir',
     from: 'Bureau 0-07',
     subject: 'Accusé de réception',
-    body: 'Le sac a été reçu. Merci de ne pas compter les sacs.',
+    body: 'Sac réceptionné.',
     trigger: { kind: 'oddBag' },
   },
 ];
