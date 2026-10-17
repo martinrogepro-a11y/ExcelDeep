@@ -44,16 +44,16 @@ export function playDezoom(stage: HTMLElement, o: DezoomOpts, apply: () => void,
 
   const actorsAt = (t: number): Actor[] => {
     const out: Actor[] = [];
-    for (let i = 0; i < o.from; i++) out.push({ x: DESK_X[i], z: SEAT_Z, pose: 'sit' });
-    if (t > walkStart + 400) out.push({ x: xA, z: SEAT_Z, pose: 'sit', alpha: Math.min(1, (t - walkStart - 400) / 900) });
+    for (let i = 0; i < o.from; i++) out.push({ x: DESK_X[i], z: SEAT_Z, pose: 'sit', seed: i + 1 });
+    if (t > walkStart + 400) out.push({ x: xA, z: SEAT_Z, pose: 'sit', seed: 11, alpha: Math.min(1, (t - walkStart - 400) / 900) });
     if (t < walkStart) {
-      out.push({ x: xA, z: SEAT_Z, pose: 'sit', accent: PLAYER_ACCENT, grade: o.from });
+      out.push({ x: xA, z: SEAT_Z, pose: 'sit', accent: PLAYER_ACCENT, grade: o.from, seed: 7 });
     } else if (t >= walkEnd) {
-      out.push({ x: xB, z: o.last ? 6 : SEAT_Z, pose: o.last ? 'stand' : 'sit', accent: PLAYER_ACCENT, grade: o.to });
+      out.push({ x: xB, z: o.last ? 6 : SEAT_Z, pose: o.last ? 'stand' : 'sit', accent: PLAYER_ACCENT, grade: o.to, seed: 7 });
     } else {
       const k = (t - walkStart) / (walkEnd - walkStart);
       const kk = k < 0.1 ? 0 : k > 0.9 ? 1 : (k - 0.1) / 0.8;
-      out.push({ x: xA + (xB - xA) * kk, z: 6, pose: 'stand', accent: PLAYER_ACCENT, grade: o.to, walk: (t - walkStart) / 95 });
+      out.push({ x: xA + (xB - xA) * kk, z: 6, pose: 'stand', accent: PLAYER_ACCENT, grade: o.to, walk: (t - walkStart) / 95, facing: xB >= xA ? 1 : -1, seed: 7 });
     }
     return out;
   };

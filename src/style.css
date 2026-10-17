@@ -361,38 +361,47 @@ button:disabled { cursor: default; }
 .chin .model { letter-spacing: .04em; opacity: .7; }
 .chin .led { margin-left: auto; width: 7px; height: 7px; border-radius: 50%; background: #46e05a; box-shadow: 0 0 6px #46e05a; }
 
-/* stagiaire : vieux cathodique beige, écran bombé, gros bord */
-.m-p1 { background: linear-gradient(160deg, #ebe5d1, #cbc3a8); padding-top: env(safe-area-inset-top, 0px); }
-.m-p1 .desk { inset: calc(12px + env(safe-area-inset-top, 0px)) 12px calc(30px + env(safe-area-inset-bottom, 0px)) 12px; border-radius: 22px / 28px; box-shadow: inset 0 0 0 2px #8f876e, 0 0 0 3px #b9b197; }
-.m-p1 .chin { height: calc(30px + env(safe-area-inset-bottom, 0px)); color: #8c836a; font-weight: 600; }
+/* Plus de bord d'écran pendant le jeu : on est dans l'écran. Le grade se voit au thème de DeepOS
+   et au rendu de la dalle ; le moniteur lui-même apparaît au démarrage et dans les cinématiques. */
+.monitor .desk { inset: 0; border-radius: 0; }
+.chin, .sticker { display: none; }
+.desk { padding-top: env(safe-area-inset-top, 0px); }
 
-/* employé : écran plus grand, bord gris plus fin */
-.m-p2 { background: linear-gradient(170deg, #d9dad6, #b9bbb6); }
-.m-p2 .desk { inset: calc(7px + env(safe-area-inset-top, 0px)) 7px calc(20px + env(safe-area-inset-bottom, 0px)) 7px; border-radius: 8px; box-shadow: inset 0 0 0 1px #6f726d; }
-.m-p2 .chin { height: calc(20px + env(safe-area-inset-bottom, 0px)); color: #6f726d; }
-.m-p2 .led { background: #f2c14e; box-shadow: 0 0 6px #f2c14e; }
+/* stagiaire : DeepOS 95, gris et bleu marine, écran bombé */
+.desk.p1 .tt { background: linear-gradient(90deg, #000080, #1084d0); }
 
-/* chef d'équipe : écran plat noir, bord minimal */
-.m-p3 { background: #17191b; }
-.m-p3 .desk { inset: calc(3px + env(safe-area-inset-top, 0px)) 3px calc(13px + env(safe-area-inset-bottom, 0px)) 3px; border-radius: 2px; }
-.m-p3 .chin { height: calc(13px + env(safe-area-inset-bottom, 0px)); color: #555; font-size: 8px; }
-.m-p3 .led { width: 4px; height: 4px; background: #5ab0ff; box-shadow: 0 0 5px #5ab0ff; }
+/* employé : DeepOS 2000, bleu-vert, écran plus net */
+.desk.p2 .tt { background: linear-gradient(90deg, #0d4f5c, #3aa6a0); }
+.desk.p2 .win.main { background: #d4d4ce; }
+.desk.p2 .status b { color: #0d4f5c; }
 
-.sticker { position: absolute; z-index: 32; pointer-events: none; font-size: 10px; }
-.sticker.postit { top: calc(2px + env(safe-area-inset-top, 0px)); right: 18px; background: #ffe866; color: #333; padding: 6px 8px 10px; transform: rotate(5deg); box-shadow: 2px 3px 5px rgba(0,0,0,.3); font-family: 'Courier Prime', monospace; font-weight: 700; }
-.sticker.postit.dark { top: auto; bottom: calc(1px + env(safe-area-inset-bottom, 0px)); right: 30px; transform: rotate(-3deg); padding: 3px 6px; }
-.sticker.inventory { bottom: calc(3px + env(safe-area-inset-bottom, 0px)); right: 34px; background: #f4f4ef; color: #333; padding: 1px 5px; border: 1px solid #999; font-family: 'Courier Prime', monospace; }
+/* chef d'équipe : DeepOS Horizon, graphite et or, écran plat */
+.desk.p3 .tt { background: linear-gradient(90deg, #22262b, #4b525c); color: #f2d27e; }
+.desk.p3 .win.main { background: #d8d4cb; }
+.desk.p3 .status b { color: #6d5212; }
+.desk.p3 .start { background: #2a2e33; color: #f2d27e; }
 
 /* ------------------------------------------------------------ vue « se lever du poste » */
 .desk-labels { position: absolute; inset: 0; pointer-events: none; }
-.desk-label { position: absolute; left: 0; top: 0; pointer-events: auto; display: grid; gap: 1px; padding: 6px 10px; background: rgba(12,16,18,.78); color: #e6e8e3; border: 1px solid rgba(226,178,60,.8); text-align: left; white-space: nowrap; font-size: 13px; }
-.desk-label small { font-size: 11px; color: #b7bcb6; }
-.desk-label.here { border-color: #e2b23c; box-shadow: 0 0 0 1px #e2b23c; }
-.desk-label.locked { border-color: rgba(200,200,200,.25); color: #7d8380; }
-.building-back { position: absolute; left: 50%; bottom: calc(10% + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); }
+/* plaques suspendues au-dessus des postes, façon signalétique d'entreprise */
+.desk-label { --tail: 0px; position: absolute; left: 0; top: 0; pointer-events: auto; display: grid; gap: 2px; min-width: 104px; padding: 7px 11px 8px; background: linear-gradient(180deg, rgba(22,27,30,.92), rgba(12,15,17,.92)); color: #e6e8e3; border: 0; border-top: 2px solid #e2b23c; text-align: left; white-space: nowrap; font-size: 13px; box-shadow: 0 6px 18px rgba(0,0,0,.45); animation: plate .5s ease-out both; }
+.desk-label::after { content: ''; position: absolute; left: calc(50% + var(--tail)); bottom: -14px; width: 1px; height: 14px; background: linear-gradient(#e2b23c, rgba(226,178,60,0)); }
+.desk-label .dl-ref { font-family: 'Courier Prime', monospace; font-size: 9px; letter-spacing: .18em; color: #e2b23c; }
+.desk-label b { font-size: 14px; font-weight: 600; }
+.desk-label small { font-size: 11px; color: #a9b0aa; }
+.desk-label.here { background: linear-gradient(180deg, rgba(60,48,18,.92), rgba(30,24,10,.92)); }
+.desk-label.locked { border-top-color: #555; color: #7d8380; opacity: .8; }
+.desk-label.locked .dl-ref { color: #6c716e; }
+.desk-label.locked::after { background: linear-gradient(#555, rgba(85,85,85,0)); }
+.desk-label:not(.locked):active { transform-origin: top; filter: brightness(1.3); }
+@keyframes plate { from { opacity: 0; translate: 0 -8px; } }
+.building-back { position: absolute; left: 50%; bottom: calc(10% + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); white-space: nowrap; }
 .film-skip { position: absolute; right: 14px; top: calc(9% + env(safe-area-inset-top, 0px)); background: transparent; border: 1px solid rgba(230,232,227,.35); color: rgba(230,232,227,.7); padding: 6px 12px; font-size: 12px; }
 
 /* ------------------------------------------------------------ outils développeur */
 .devmenu { z-index: 80; }
 .dev-body { padding: 12px; display: grid; gap: 8px; max-height: 70vh; overflow: auto; }
 .dev-body h3 { margin: 6px 0 0; font-size: 13px; color: #444; text-transform: uppercase; letter-spacing: .08em; }
+
+/* le tampon recouvre l'étiquette du colis */
+.parcel:has(.stampmark.on) .label { opacity: 0; }

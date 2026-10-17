@@ -323,3 +323,144 @@ export function stopMusic(): void {
 export function isMusicPlaying(): boolean {
   return timer !== null;
 }
+
+/* ------------------------------------------------------------ jingle et nappe du film */
+
+/** Le jingle DeepCorp : trois notes nettes, puis un accord qui sonne un peu faux. */
+export function playJingle(): void {
+  const c = ensure();
+  if (!c || c.state !== 'running' || !sfxOn) return;
+  const t = c.currentTime + 0.05;
+  const mallet = (f: number, at: number, dur: number, gain: number) => {
+    tone(f, at, dur, { type: 'sine', gain, release: 0.4 });
+    tone(f * 4, at, 0.05, { type: 'sine', gain: gain * 0.25 });
+  };
+  mallet(523, t, 0.25, 0.22);
+  mallet(659, t + 0.16, 0.25, 0.22);
+  mallet(784, t + 0.32, 0.3, 0.22);
+  mallet(1046, t + 0.62, 1.2, 0.18);
+  mallet(740, t + 0.62, 1.2, 0.07);
+}
+
+let pad: { stop(): void } | null = null;
+
+/** Nappe lente et polie, pour le film d'accueil. */
+export function startPad(): void {
+  const c = ensure();
+  if (!c || c.state !== 'running' || pad) return;
+  const out = c.createGain();
+  out.gain.setValueAtTime(0.0001, c.currentTime);
+  out.gain.exponentialRampToValueAtTime(musicOn ? 0.9 : 0.0001, c.currentTime + 2);
+  const lp = c.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 1400;
+  lp.connect(out);
+  out.connect(master);
+  const chords = [
+    [48, 52, 55, 59],
+    [45, 48, 52, 59],
+    [41, 45, 48, 52],
+    [43, 47, 50, 52],
+  ];
+  let i = 0;
+  const play = () => {
+    const at = c.currentTime + 0.05;
+    for (const m of chords[i % chords.length]) {
+      tone(N(m + 12), at, 3.6, { type: 'sine', gain: 0.035, attack: 1.2, release: 1, dest: lp });
+      tone(N(m + 12), at, 3.6, { type: 'triangle', gain: 0.012, attack: 1.4, release: 1, dest: lp, detune: 7 });
+    }
+    tone(N(chords[i % chords.length][0]), at, 3.6, { type: 'sine', gain: 0.06, attack: 0.8, release: 1, dest: lp });
+    i++;
+  };
+  play();
+  const timer = window.setInterval(play, 4000);
+  pad = {
+    stop() {
+      clearInterval(timer);
+      out.gain.setTargetAtTime(0.0001, c.currentTime, 0.5);
+      setTimeout(() => out.disconnect(), 3000);
+      pad = null;
+    },
+  };
+}
+
+export function stopPad(): void {
+  pad?.stop();
+}
+
+/* ------------------------------------------------------------ cathodique */
+
+let whine: { stop(): void } | null = null;
+
+export type CrtSound = 'power' | 'static' | 'pop' | 'degauss';
+
+export function crtSound(name: CrtSound, dur = 0.5): void {
+  const c = ensure();
+  if (!c || c.state !== 'running' || !sfxOn) return;
+  const t = c.currentTime;
+  switch (name) {
+    case 'power':
+      tone(90, t, 0.06, { type: 'square', gain: 0.12, to: 50 });
+      noise(t, 0.05, 'lowpass', 900, 0.4);
+      break;
+    case 'static':
+      noise(t, dur, 'bandpass', 3200, 0.22, undefined, 0.6);
+      noise(t, dur, 'highpass', 7000, 0.06);
+      break;
+    case 'pop':
+      tone(1400, t, 0.03, { type: 'sine', gain: 0.1, to: 300 });
+      break;
+    case 'degauss': {
+      // le « bwoing » grave des vieux écrans qui se démagnétisent
+      const o = c.createOscillator();
+      const g = c.createGain();
+      const lfo = c.createOscillator();
+      const lg = c.createGain();
+      o.type = 'sawtooth';
+      o.frequency.value = 55;
+      lfo.frequency.value = 9;
+      lg.gain.value = 12;
+      lfo.connect(lg);
+      lg.connect(o.frequency);
+      const f = c.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = 380;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.35, t + 0.04);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+      o.connect(f);
+      f.connect(g);
+      g.connect(sfxBus);
+      o.start(t);
+      lfo.start(t);
+      o.stop(t + 1);
+      lfo.stop(t + 1);
+      break;
+    }
+  }
+}
+
+/** Le sifflement aigu d'un cathodique allumé. */
+export function startWhine(): void {
+  const c = ensure();
+  if (!c || c.state !== 'running' || whine || !sfxOn) return;
+  const o = c.createOscillator();
+  const g = c.createGain();
+  o.frequency.value = 7900;
+  g.gain.setValueAtTime(0.0001, c.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.012, c.currentTime + 0.2);
+  o.connect(g);
+  g.connect(sfxBus);
+  o.start();
+  whine = {
+    stop() {
+      g.gain.setTargetAtTime(0.0001, c.currentTime, 0.15);
+      o.stop(c.currentTime + 0.8);
+      whine = null;
+    },
+  };
+}
+
+export function stopWhine(): void {
+  whine?.stop();
+}

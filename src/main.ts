@@ -5,6 +5,7 @@ import { ASSIST_LEVEL, CHAIN, POSTES } from './data/content';
 import { deliverMails, offlineProgress, promote, tick } from './engine/sim';
 import { clearSave, loadState, newState, saveState, type GameState } from './engine/state';
 import { openBuilding } from './ui/building';
+import { playCrtBoot } from './ui/crt';
 import { Desk } from './ui/desk';
 import { openDevMenu } from './ui/dev';
 import { playDezoom } from './ui/dezoom';
@@ -65,6 +66,7 @@ function devMenu(): void {
     },
     openBuilding: leaveDesk,
     replayIntroFilm: () => playOrientation(stage, s.playerName, () => {}),
+    replayCrt: () => playCrtBoot(stage, POSTES[visit].decor, 'full', () => {}),
     addCredits: (n) => {
       s.credits += n;
       s.earnedTotal += n;
@@ -181,6 +183,8 @@ function start(): void {
   }
   const off = offlineProgress(s, Date.now());
   mountDesk();
+  // à chaque lancement, l'écran du poste s'allume
+  playCrtBoot(stage, POSTES[visit].decor, 'short', () => {});
   reportOffline(off.seconds, off.gained);
   save();
 }

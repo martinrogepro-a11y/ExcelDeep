@@ -1,12 +1,13 @@
 import type { GameState } from '../engine/state';
 import { h, icon } from './dom';
+import { playCrtBoot } from './crt';
 import { playOrientation } from './orientation';
 import { signaturePad } from './signature';
 
 /** Lettre reçue chez soi → contrat signé au doigt → démarrage du PC du poste 117. */
 export function runIntro(root: HTMLElement, s: GameState, done: () => void): void {
   root.replaceChildren();
-  showLetter(root, () => showContract(root, s, () => playOrientation(root, s.playerName, () => showBoot(root, done))));
+  showLetter(root, () => showContract(root, s, () => playOrientation(root, s.playerName, () => playCrtBoot(root, 'p1', 'full', done))));
 }
 
 function showLetter(root: HTMLElement, next: () => void): void {
@@ -96,19 +97,4 @@ function showContract(root: HTMLElement, s: GameState, next: () => void): void {
     stamp.classList.add('on');
     setTimeout(next, 1100);
   });
-}
-
-function showBoot(root: HTMLElement, done: () => void): void {
-  const bar = h('div', { class: 'boot-bar' }, h('i'));
-  root.replaceChildren(
-    h(
-      'div',
-      { class: 'scene-boot' },
-      h('div', { class: 'boot-logo' }, icon('logo', 'ico huge'), h('b', null, 'DeepOS'), h('span', null, '95')),
-      bar,
-      h('p', { class: 'boot-text' }, 'Poste 117 · Service Courrier'),
-    ),
-  );
-  setTimeout(() => bar.classList.add('go'), 50);
-  setTimeout(done, 2600);
 }

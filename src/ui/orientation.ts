@@ -1,5 +1,6 @@
-import { sfx, startDrone, stopDrone } from '../audio/audio';
-import { PLAYER_ACCENT, drawPerson, filmLook, makeGrain } from './scene';
+import { playJingle, sfx, startPad, stopPad } from '../audio/audio';
+import { PLAYER, drawSeated, drawStation, drawWalker, lookFor, type RGB } from './art';
+import { filmLook, makeGrain } from './scene';
 
 // Film d'accueil des nouveaux collaborateurs : ton institutionnel, images froides,
 // tout est un peu trop calme et un peu trop synchronisé.
@@ -11,34 +12,69 @@ interface Shot {
   draw(g: CanvasRenderingContext2D, W: number, H: number, k: number, t: number): void;
 }
 
-const INK = 'rgb(28,32,35)';
+const TEAL: RGB = [0, 160, 160];
+const PAPER = '#e6e8e3';
 
 function logo(g: CanvasRenderingContext2D, cx: number, cy: number, size: number, k: number): void {
   const cell = size / 3;
   const order = [0, 1, 2, 5, 4, 3, 6, 8, 7];
+  const base = g.globalAlpha;
   order.forEach((idx, n) => {
-    const a = Math.min(1, Math.max(0, k * 12 - n));
+    const a = Math.min(1, Math.max(0, k * 14 - n));
     if (a <= 0) return;
     const x = cx - size / 2 + (idx % 3) * cell;
     const y = cy - size / 2 + Math.floor(idx / 3) * cell;
-    g.globalAlpha = a;
-    g.fillStyle = idx === 7 ? '#f2c14e' : '#e6e8e3';
-    g.fillRect(x + 2, y + 2, cell - 4, cell - 4);
+    const grow = 0.6 + a * 0.4;
+    g.globalAlpha = base * a;
+    g.fillStyle = idx === 7 ? '#f2c14e' : PAPER;
+    g.fillRect(x + cell / 2 - (cell / 2 - 2) * grow, y + cell / 2 - (cell / 2 - 2) * grow, (cell - 4) * grow, (cell - 4) * grow);
   });
-  g.globalAlpha = 1;
+  g.globalAlpha = base;
+  if (k > 0.7) {
+    // la case jaune brille un instant
+    g.globalCompositeOperation = 'lighter';
+    const gl = g.createRadialGradient(cx, cy + cell, 0, cx, cy + cell, size);
+    gl.addColorStop(0, `rgba(242,193,78,${0.18 * Math.min(1, (k - 0.7) * 5)})`);
+    gl.addColorStop(1, 'rgba(242,193,78,0)');
+    g.fillStyle = gl;
+    g.fillRect(cx - size, cy - size, size * 2, size * 2);
+    g.globalCompositeOperation = 'source-over';
+  }
 }
 
-function deskWithPerson(g: CanvasRenderingContext2D, x: number, y: number, s: number, accent: boolean, bob: number, alpha = 1, personAlpha = 1): void {
-  const base = g.globalAlpha;
-  g.globalAlpha = base * alpha;
-  g.fillStyle = 'rgb(56,48,42)';
-  g.fillRect(x - 34 * s, y - 30 * s, 68 * s, 30 * s);
-  g.fillStyle = 'rgb(196,190,170)';
-  g.fillRect(x - 17 * s, y - 58 * s, 34 * s, 24 * s);
-  g.fillStyle = 'rgb(0,150,150)';
-  g.fillRect(x - 15 * s, y - 56 * s, 30 * s, 20 * s);
-  drawPerson(g, x, y + 4 * s + bob * s, s, { pose: 'sit', accent: accent ? PLAYER_ACCENT : undefined, grade: 0, alpha: personAlpha }, INK);
-  g.globalAlpha = base;
+/** Néon au plafond et son cône de lumière, avec de la poussière dedans. */
+function neon(g: CanvasRenderingContext2D, x: number, top: number, floor: number, w: number, t: number): void {
+  g.fillStyle = 'rgba(235,240,236,0.9)';
+  g.fillRect(x - w / 2, top, w, 4);
+  g.globalCompositeOperation = 'lighter';
+  const grad = g.createLinearGradient(0, top, 0, floor);
+  grad.addColorStop(0, 'rgba(220,232,226,0.12)');
+  grad.addColorStop(1, 'rgba(220,232,226,0)');
+  g.fillStyle = grad;
+  g.beginPath();
+  g.moveTo(x - w / 2, top);
+  g.lineTo(x + w / 2, top);
+  g.lineTo(x + w * 1.4, floor);
+  g.lineTo(x - w * 1.4, floor);
+  g.fill();
+  const span = floor - top;
+  for (let i = 0; i < 24; i++) {
+    const px = x + Math.sin(i * 77.1) * w * 0.9 + Math.sin(t / 1400 + i) * 6;
+    const py = top + ((Math.abs(Math.sin(i * 13.7)) * span + t * 0.01 * (0.4 + (i % 5) / 5)) % span);
+    g.fillStyle = `rgba(230,236,230,${0.25 + Math.sin(t / 700 + i) * 0.1})`;
+    g.fillRect(px, py, 1.4, 1.4);
+  }
+  g.globalCompositeOperation = 'source-over';
+}
+
+function screenGlow(g: CanvasRenderingContext2D, x: number, y: number, r: number, a: number): void {
+  g.globalCompositeOperation = 'lighter';
+  const gl = g.createRadialGradient(x, y, 0, x, y, r);
+  gl.addColorStop(0, `rgba(0,160,160,${a})`);
+  gl.addColorStop(1, 'rgba(0,160,160,0)');
+  g.fillStyle = gl;
+  g.fillRect(x - r, y - r, r * 2, r * 2);
+  g.globalCompositeOperation = 'source-over';
 }
 
 export function playOrientation(stage: HTMLElement, playerName: string, done: () => void): void {
@@ -60,112 +96,133 @@ export function playOrientation(stage: HTMLElement, playerName: string, done: ()
   stage.append(wrap);
   const grain = makeGrain();
   const name = playerName || 'nouveau collaborateur';
+  const u = Math.min(W, H) / 390;
 
   const shots: Shot[] = [
     {
       start: 0,
-      end: 4500,
-      caption: ['DEEPCORP', 'Programme d’accueil des nouveaux collaborateurs'],
-      draw: (g, W, H, k) => logo(g, W / 2, H * 0.4, Math.min(W, H) * 0.32, k),
+      end: 4800,
+      caption: ['D E E P C O R P', 'Programme d’accueil des nouveaux collaborateurs'],
+      draw: (g, W, H, k) => logo(g, W / 2, H * 0.4, 120 * u, k),
     },
     {
-      start: 4500,
-      end: 9500,
+      start: 4800,
+      end: 10000,
       caption: ['Votre poste a été préparé', 'avant votre arrivée.'],
-      draw: (g, W, H, k) => {
-        const s = 2.2 + k * 0.4;
-        const glow = g.createRadialGradient(W / 2, H * 0.48, 0, W / 2, H * 0.48, 160 * s);
-        glow.addColorStop(0, 'rgba(0,160,160,0.18)');
-        glow.addColorStop(1, 'rgba(0,160,160,0)');
-        g.fillStyle = glow;
-        g.fillRect(0, 0, W, H);
-        // le poste est vide, puis quelqu'un y est assis
-        deskWithPerson(g, W / 2, H * 0.6, s, true, 0, 1, k > 0.45 ? Math.min(1, (k - 0.45) * 4) : 0);
+      draw: (g, W, H, k, t) => {
+        // un poste vide sous un néon ; puis quelqu'un y est assis
+        const s = (3.2 + k * 0.35) * u;
+        const fx = W / 2;
+        const fy = H * 0.66;
+        g.fillStyle = 'rgba(0,0,0,0.25)';
+        g.fillRect(0, fy, W, H - fy);
+        neon(g, fx, H * 0.14, fy, 90 * u, t);
+        screenGlow(g, fx, fy - 50 * s, 60 * s, 0.22);
+        drawStation(g, fx, fy, s, { screen: TEAL, fog: 0, seed: 3, time: t });
+        drawSeated(g, fx, fy + 10 * s, s * 1.12, t, { accent: PLAYER, grade: 0, alpha: k > 0.42 ? Math.min(1, (k - 0.42) * 4) : 0, rim: TEAL });
       },
     },
     {
-      start: 9500,
-      end: 15000,
+      start: 10000,
+      end: 15800,
       caption: ['Chaque collaborateur', 'est à sa place.'],
       draw: (g, W, H, k, t) => {
-        // rangées identiques, tout le monde tape au même rythme
-        const bob = Math.sin(t / 160) > 0 ? 1 : 0;
-        const pan = k * 40;
-        for (let row = 0; row < 4; row++) {
-          const s = 0.7 + row * 0.35;
-          const y = H * (0.36 + row * 0.12);
-          const gap = 92 * s;
-          const fog = 1 - (3 - row) * 0.22;
-          for (let x = -gap + ((pan * s) % gap); x < W + gap; x += gap) deskWithPerson(g, x, y, s, false, bob, fog);
+        // rangées identiques ; tout le monde tape exactement au même rythme
+        const sync = Math.floor(t / 180) * 180;
+        const pan = k * 60 * u;
+        for (let row = 0; row < 5; row++) {
+          const s = (0.75 + row * 0.42) * u;
+          const y = H * (0.34 + row * 0.1);
+          const gap = 96 * s;
+          const fog = Math.max(0, 0.7 - row * 0.17);
+          for (let x = -gap + ((pan * (row + 1)) % gap); x < W + gap; x += gap) {
+            screenGlow(g, x, y - 50 * s, 34 * s, 0.1 * (1 - fog));
+            drawStation(g, x, y, s, { screen: TEAL, fog, seed: 5, time: sync });
+            drawSeated(g, x, y + 9 * s, s * 1.12, sync, { fog, look: lookFor(1), rim: TEAL });
+          }
         }
       },
     },
     {
-      start: 15000,
-      end: 20500,
+      start: 15800,
+      end: 21300,
       caption: ['Aujourd’hui,', 'vous en faites partie.'],
       draw: (g, W, H, k) => {
         const cols = 7;
         const rows = 5;
-        const s = Math.min(W, H) / 470;
+        const s = 1.15 * u;
         const sx = W / (cols + 1);
-        const sy = (H * 0.52) / rows;
+        const sy = (H * 0.5) / rows;
         for (let r = 0; r < rows; r++) {
           for (let c = 0; c < cols; c++) {
             const me = r === 3 && c === 4;
             if (me && k < 0.45) continue;
-            drawPerson(g, sx * (c + 1), H * 0.18 + sy * (r + 1), s, { pose: 'stand', accent: me ? PLAYER_ACCENT : undefined, grade: 0 }, me ? INK : 'rgb(70,78,82)');
+            drawWalker(g, sx * (c + 1), H * 0.22 + sy * (r + 1), s, 0, 1, { fog: me ? 0 : 0.45, accent: me ? PLAYER : undefined, look: lookFor(me ? 9 : 1) });
           }
         }
-        g.fillStyle = '#e6e8e3';
-        g.font = `600 ${Math.round(26 * s + 6)}px "Courier Prime", monospace`;
+        g.fillStyle = PAPER;
+        g.font = `600 ${Math.round(24 * u)}px "Courier Prime", monospace`;
         g.textAlign = 'center';
-        g.fillText(`EFFECTIF : ${k < 0.45 ? '4 112' : '4 113'}`, W / 2, H * 0.16);
+        g.fillText(`EFFECTIF : ${k < 0.45 ? '4 112' : '4 113'}`, W / 2, H * 0.17);
       },
     },
     {
-      start: 20500,
-      end: 28500,
+      start: 21300,
+      end: 29300,
       caption: [],
       draw: (g, W, H, k) => {
-        const rules = ['1. Traitez ce qui vous est confié.', '2. Ne laissez rien s’accumuler.', '3. Les niveaux inférieurs', '    ne vous concernent pas.'];
-        g.fillStyle = 'rgba(230,232,227,0.08)';
-        g.fillRect(W * 0.06, H * 0.3, W * 0.88, H * 0.34);
-        g.fillStyle = '#e6e8e3';
-        g.font = '600 14px "Courier Prime", monospace';
+        const rules = [['Traitez ce qui vous est confié.'], ['Ne laissez rien s’accumuler.'], ['Les niveaux inférieurs', 'ne vous concernent pas.']];
+        const x0 = W * 0.08;
+        const y0 = H * 0.27;
+        const w = W * 0.84;
+        const h = H * 0.4;
+        g.fillStyle = 'rgba(230,232,227,0.06)';
+        g.fillRect(x0, y0, w, h);
+        g.strokeStyle = 'rgba(230,232,227,0.35)';
+        g.lineWidth = 1;
+        g.strokeRect(x0 + 0.5, y0 + 0.5, w - 1, h - 1);
+        g.fillStyle = 'rgba(230,232,227,0.12)';
+        g.fillRect(x0, y0, w, 34 * u);
+        logo(g, x0 + 20 * u, y0 + 17 * u, 18 * u, 1);
+        g.fillStyle = PAPER;
+        g.font = `600 ${Math.round(12 * u)}px "Courier Prime", monospace`;
         g.textAlign = 'left';
-        g.fillText('RÈGLES DU POSTE', W * 0.11, H * 0.36);
-        g.font = '13.5px "Courier Prime", monospace';
-        rules.forEach((r, i) => {
-          const at = [0.08, 0.3, 0.55, 0.55][i];
+        g.fillText('RÈGLES DU POSTE · DOCUMENT RH-01', x0 + 38 * u, y0 + 21 * u);
+        g.font = `${Math.round(14 * u)}px "Courier Prime", monospace`;
+        rules.forEach((lines, i) => {
+          const at = [0.08, 0.3, 0.55][i];
           if (k < at) return;
           g.globalAlpha = Math.min(1, (k - at) * 8);
-          g.fillText(r, W * 0.11, H * (0.43 + i * 0.05 + (i === 3 ? -0.015 : 0)));
+          const ry = y0 + (70 + i * 60) * u;
+          g.strokeStyle = PAPER;
+          g.strokeRect(x0 + 18 * u, ry - 11 * u, 12 * u, 12 * u);
+          g.fillText('✓', x0 + 19.5 * u, ry - 0.5 * u);
+          lines.forEach((l, j) => g.fillText(l, x0 + 40 * u, ry + j * 18 * u));
           g.globalAlpha = 1;
         });
       },
     },
     {
-      start: 28500,
-      end: 32500,
+      start: 29300,
+      end: 33500,
       caption: ['Bonne première journée,', `${name}.`],
-      draw: (g, W, H, k) => logo(g, W / 2, H * 0.4, Math.min(W, H) * 0.2, 1 - Math.max(0, k - 0.7) * 3),
+      draw: (g, W, H, k) => logo(g, W / 2, H * 0.4, 70 * u, 1 - Math.max(0, k - 0.75) * 4),
     },
   ];
   const total = shots[shots.length - 1].end;
-  const ruleTimes = [20500 + 0.08 * 8000, 20500 + 0.3 * 8000, 20500 + 0.55 * 8000];
+  const stamps = [21300 + 0.08 * 8000, 21300 + 0.3 * 8000, 21300 + 0.55 * 8000];
   const played = new Set<number>();
 
   let t0 = 0;
   let raf = 0;
   let finished = false;
-  startDrone();
-  sfx('notify');
+  startPad();
+  playJingle();
   const finish = () => {
     if (finished) return;
     finished = true;
     cancelAnimationFrame(raf);
-    stopDrone();
+    stopPad();
     wrap.classList.add('out');
     setTimeout(() => wrap.remove(), 500);
     done();
@@ -175,27 +232,27 @@ export function playOrientation(stage: HTMLElement, playerName: string, done: ()
     if (!t0) t0 = now;
     const t = now - t0;
     const bg = g.createLinearGradient(0, 0, 0, H);
-    bg.addColorStop(0, '#11171a');
-    bg.addColorStop(1, '#3a474d');
+    bg.addColorStop(0, '#0f1518');
+    bg.addColorStop(1, '#36434a');
     g.fillStyle = bg;
     g.fillRect(0, 0, W, H);
     const shot = shots.find((s) => t >= s.start && t < s.end);
     if (shot) {
       const k = (t - shot.start) / (shot.end - shot.start);
-      const fade = Math.min(1, (t - shot.start) / 500, (shot.end - t) / 500);
+      const fade = Math.min(1, (t - shot.start) / 600, (shot.end - t) / 600);
       g.globalAlpha = fade;
       shot.draw(g, W, H, k, t);
       g.globalAlpha = fade;
-      g.fillStyle = '#e6e8e3';
+      g.fillStyle = PAPER;
       g.textAlign = 'center';
       shot.caption.forEach((line, i) => {
-        g.font = i === 0 && shot.start === 0 ? '600 22px "Pixelify Sans", monospace' : '15px "Courier Prime", monospace';
-        g.fillText(line, W / 2, H * 0.78 + i * 24);
+        g.font = i === 0 && shot.start === 0 ? `600 ${Math.round(20 * u)}px "Pixelify Sans", monospace` : `${Math.round(15 * u)}px "Courier Prime", monospace`;
+        g.fillText(line, W / 2, H * 0.8 + i * 24 * u);
       });
       g.globalAlpha = 1;
     }
-    ruleTimes.forEach((rt, i) => {
-      if (t >= rt && !played.has(i)) {
+    stamps.forEach((st, i) => {
+      if (t >= st && !played.has(i)) {
         played.add(i);
         sfx('stamp', true);
       }

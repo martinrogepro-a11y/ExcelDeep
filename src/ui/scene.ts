@@ -1,13 +1,15 @@
 // Le bâtiment DeepCorp en coupe, vu de côté dans le brouillard, avec une caméra en perspective.
 // Utilisé par la cinématique de promotion et par la vue « se lever du poste ».
+import { PLAYER, drawSeated, drawStation, drawWalker, lookFor, type RGB } from './art';
 
-export type RGB = [number, number, number];
+export type { RGB } from './art';
 
 export const FLOOR_H = 100;
 export const HALF_W = 320;
 export const BACK_Z = 70;
 export const DESK_X = [-200, 0, 200];
-export const MON = { y: 46, z: 30, w: 30, h: 20 };
+/** Dalle de l'écran des postes, en coordonnées monde. */
+export const MON = { y: 50, z: 30, w: 28, h: 20 };
 export const SEAT_Z = 12;
 export const ELEVATOR_X = 272;
 export const PLAYER_ACCENT = '#e2b23c';
@@ -55,7 +57,7 @@ function rng(seed: number): () => number {
   };
 }
 
-/** Lueurs derrière les stores des étages fermés, et la ville au loin. */
+/** Lueurs derrière les stores des étages fermés, poussière, ville au loin. */
 const WORLD = (() => {
   const r = rng(117);
   const glows: { floor: number; x: number; c: RGB; flicker: number }[] = [];
@@ -66,6 +68,7 @@ const WORLD = (() => {
     }
     if (r() < 0.35) shadows.push({ floor: f, x: r() * 500 - 250 });
   }
+  const dust = Array.from({ length: 46 }, () => ({ x: r() * 600 - 300, y: r() * 90 + 5, z: r() * 50 + 5, v: r() * 0.6 + 0.2, p: r() * 6 }));
   const towers: { x: number; w: number; h: number; lit: { x: number; y: number }[] }[] = [];
   for (let x = -3600; x < 3600; x += 120 + r() * 200) {
     const w = 90 + r() * 180;
@@ -74,17 +77,20 @@ const WORLD = (() => {
     for (let i = 0; i < 5; i++) if (r() < 0.5) lit.push({ x: r() * (w - 20) + 6, y: r() * (h - 30) + 10 });
     towers.push({ x, w, h, lit });
   }
-  return { glows, shadows, towers };
+  return { glows, shadows, dust, towers };
 })();
 
 export interface Actor {
   x: number;
   z: number;
   pose: 'sit' | 'stand';
+  /** Le joueur, reconnaissable à sa couleur. */
   accent?: string;
   grade?: number;
   walk?: number;
+  facing?: 1 | -1;
   alpha?: number;
+  seed?: number;
 }
 
 /** Ce que la scène montre à l'instant t : qui est où, quels écrans sont allumés. */
@@ -94,64 +100,6 @@ export interface SceneState {
   litDesks: number;
   /** Bureaux de l'étage 1 à mettre en évidence (vue « se lever »). */
   highlight?: number[];
-}
-
-/** Silhouette plate façon film d'entreprise : assise de dos, ou debout avec un pas. */
-export function drawPerson(g: CanvasRenderingContext2D, sx: number, sy: number, scale: number, a: Omit<Actor, 'x' | 'z'>, body: string): void {
-  if ((a.alpha ?? 1) <= 0.01) return;
-  g.save();
-  g.globalAlpha *= a.alpha ?? 1;
-  g.translate(sx, sy);
-  g.scale(scale, scale);
-  const accent = a.accent;
-  const torso = accent && a.grade !== 2 ? accent : body;
-  if (a.pose === 'sit') {
-    g.fillStyle = 'rgba(40,44,48,0.95)';
-    g.fillRect(-9, -36, 18, 16);
-    g.fillRect(-1.5, -20, 3, 20);
-    g.fillStyle = torso;
-    g.beginPath();
-    g.roundRect(-7, -42, 14, 22, 4);
-    g.fill();
-    if (accent && a.grade === 2) {
-      g.fillStyle = accent;
-      g.fillRect(-1, -40, 2, 10);
-    }
-    g.fillStyle = body;
-    g.beginPath();
-    g.arc(0, -47, 5.2, 0, Math.PI * 2);
-    g.fill();
-  } else {
-    const swing = Math.sin(a.walk ?? 0) * 9;
-    g.strokeStyle = body;
-    g.lineWidth = 4.2;
-    g.lineCap = 'round';
-    g.beginPath();
-    g.moveTo(0, -34);
-    g.lineTo(swing, -2);
-    g.moveTo(0, -34);
-    g.lineTo(-swing, -2);
-    g.stroke();
-    g.fillStyle = torso;
-    g.beginPath();
-    g.roundRect(-6.5, -60, 13, 28, 4);
-    g.fill();
-    if (accent && a.grade === 2) {
-      g.fillStyle = accent;
-      g.fillRect(-1, -58, 2, 12);
-    }
-    g.strokeStyle = body;
-    g.lineWidth = 3.2;
-    g.beginPath();
-    g.moveTo(-5, -56);
-    g.lineTo(-6 - swing * 0.4, -38);
-    g.stroke();
-    g.fillStyle = body;
-    g.beginPath();
-    g.arc(0, -66, 5.4, 0, Math.PI * 2);
-    g.fill();
-  }
-  g.restore();
 }
 
 export function makeGrain(): HTMLCanvasElement {
@@ -213,9 +161,9 @@ export class OfficeScene {
 
   /* ---------------------------------------------------- cadrages tout prêts */
 
-  /** Le moniteur du poste i remplit l'écran. */
+  /** La dalle du moniteur du poste i remplit l'écran. */
   monitorCam(i: number): Cam {
-    return { x: DESK_X[i], y: MON.y, d: this.F / (this.W / (MON.w * 0.92)) - MON.z };
+    return { x: DESK_X[i], y: MON.y, d: this.F / (this.W / (MON.w * 0.96)) - MON.z };
   }
 
   /** Plan rapproché sur un poste, le perso de dos. */
@@ -241,8 +189,12 @@ export class OfficeScene {
     return { x: this.W / 2 + (x - this.cam.x) * s, y: this.H / 2 - (y - this.cam.y) * s, s, d };
   }
 
+  private fogK(d: number, extra = 0): number {
+    return Math.min(0.9, Math.max(0, (d - 260) / 2600 + extra));
+  }
+
   private fogMix(c: RGB, d: number, extra = 0): string {
-    const k = Math.min(0.9, Math.max(0, (d - 260) / 2600 + extra));
+    const k = this.fogK(d, extra);
     return `rgb(${c.map((v, i) => Math.round(v + (FOG[i] - v) * k)).join(',')})`;
   }
 
@@ -284,33 +236,27 @@ export class OfficeScene {
     g.globalCompositeOperation = 'source-over';
   }
 
-  private actor(a: Actor, baseY = 0): void {
+  private actor(a: Actor, time: number, baseY = 0): void {
     const p = this.project(a.x, baseY, a.z);
+    if (p.d < NEAR) return;
     // ce qui est trop près de la caméra disparaît en fondu, comme si on passait au travers
     const near = Math.min(1, Math.max(0, (p.d - 48) / 50));
-    drawPerson(this.g, p.x, p.y, p.s, { ...a, alpha: (a.alpha ?? 1) * near }, this.fogMix([26, 30, 33], p.d));
+    const fog = this.fogK(p.d);
+    const nearest = DESK_X.reduce((best, x, i) => (Math.abs(x - a.x) < Math.abs(DESK_X[best] - a.x) ? i : best), 0);
+    const opts = { look: lookFor(a.seed ?? Math.round(a.x)), fog, alpha: (a.alpha ?? 1) * near, accent: a.accent ? PLAYER : undefined, grade: a.grade, rim: SCREEN[nearest] };
+    if (a.pose === 'sit') drawSeated(this.g, p.x, p.y, p.s, time + (a.seed ?? a.x) * 37, opts);
+    else drawWalker(this.g, p.x, p.y, p.s, a.walk ?? 0, a.facing ?? 1, opts);
   }
 
-  private desk(x: number, baseY: number, screen: RGB, lit: boolean, highlight: boolean): void {
-    const pd = this.project(x, baseY, 30).d;
-    this.quad(
-      [
-        [x - 34, baseY + 30, 18],
-        [x + 34, baseY + 30, 18],
-        [x + 34, baseY + 30, 44],
-        [x - 34, baseY + 30, 44],
-      ],
-      this.fogMix([74, 62, 52], pd),
-    );
-    this.rectZ(x - 34, baseY, x + 34, baseY + 30, 18, this.fogMix([46, 39, 33], pd));
-    this.rectZ(x - MON.w / 2 - 2, baseY + MON.y - MON.h / 2 - 2, x + MON.w / 2 + 2, baseY + MON.y + MON.h / 2 + 2, MON.z + 1, this.fogMix([196, 190, 170], pd));
-    this.rectZ(x - MON.w / 2, baseY + MON.y - MON.h / 2, x + MON.w / 2, baseY + MON.y + MON.h / 2, MON.z, lit ? `rgb(${screen.join(',')})` : this.fogMix([30, 34, 36], pd));
-    this.rectZ(x - 3, baseY + 30, x + 3, baseY + MON.y - MON.h / 2, MON.z + 2, this.fogMix([150, 146, 130], pd));
-    if (lit) this.glow(x, baseY + MON.y, MON.z - 4, 70, screen, highlight ? 0.38 : 0.22);
-    if (highlight) this.glow(x, baseY + 20, 10, 60, [226, 178, 60], 0.12);
+  private desk(x: number, baseY: number, screen: RGB, lit: boolean, highlight: boolean, time: number): void {
+    const p = this.project(x, baseY, MON.z);
+    if (p.d < NEAR) return;
+    drawStation(this.g, p.x, p.y, p.s, { screen: lit ? screen : null, fog: this.fogK(p.d), seed: x + baseY * 3, time });
+    if (lit) this.glow(x, baseY + MON.y, MON.z - 4, 70, screen, highlight ? 0.36 : 0.2);
+    if (highlight) this.glow(x, baseY + 10, 10, 55, [226, 178, 60], 0.1);
   }
 
-  private room(baseY: number, wall: RGB, lightOn: boolean): void {
+  private room(baseY: number, wall: RGB, lightOn: boolean, time: number, detailed = false): void {
     const top = baseY + FLOOR_H;
     const pd = this.project(0, baseY + 50, BACK_Z).d;
     const a = this.project(0, top, BACK_Z);
@@ -321,6 +267,7 @@ export class OfficeScene {
       grad.addColorStop(1, this.fogMix(wall.map((v) => v * 0.6) as RGB, pd));
       this.rectZ(-HALF_W, baseY, HALF_W, top, BACK_Z, grad);
     }
+    // sol en moquette, plafond en dalles
     this.quad(
       [
         [-HALF_W, baseY, 0],
@@ -328,7 +275,7 @@ export class OfficeScene {
         [HALF_W, baseY, BACK_Z],
         [-HALF_W, baseY, BACK_Z],
       ],
-      this.fogMix(lightOn ? [92, 88, 80] : [44, 46, 48], pd),
+      this.fogMix(lightOn ? [86, 84, 78] : [44, 46, 48], pd),
     );
     this.quad(
       [
@@ -339,6 +286,28 @@ export class OfficeScene {
       ],
       this.fogMix([40, 44, 47], pd),
     );
+    if (detailed) {
+      for (let z = 14; z < BACK_Z; z += 14) {
+        this.quad(
+          [
+            [-HALF_W, top, z],
+            [HALF_W, top, z],
+            [HALF_W, top, z + 0.6],
+            [-HALF_W, top, z + 0.6],
+          ],
+          this.fogMix([58, 62, 65], pd),
+        );
+        this.quad(
+          [
+            [-HALF_W, baseY, z],
+            [HALF_W, baseY, z],
+            [HALF_W, baseY, z + 0.5],
+            [-HALF_W, baseY, z + 0.5],
+          ],
+          this.fogMix([74, 72, 66], pd),
+        );
+      }
+    }
     for (const sx of [-HALF_W, HALF_W]) {
       this.quad(
         [
@@ -350,12 +319,70 @@ export class OfficeScene {
         this.fogMix([48, 53, 56], pd),
       );
     }
-    this.rectZ(ELEVATOR_X - 20, baseY, ELEVATOR_X + 20, baseY + 72, BACK_Z - 1, this.fogMix([120, 126, 130], pd));
+    // ascenseur
+    this.rectZ(ELEVATOR_X - 22, baseY, ELEVATOR_X + 22, baseY + 74, BACK_Z - 0.5, this.fogMix([86, 92, 96], pd));
+    this.rectZ(ELEVATOR_X - 20, baseY, ELEVATOR_X + 20, baseY + 72, BACK_Z - 1, this.fogMix([126, 132, 136], pd));
     this.rectZ(ELEVATOR_X - 0.6, baseY, ELEVATOR_X + 0.6, baseY + 72, BACK_Z - 1.5, this.fogMix([60, 64, 66], pd));
+    if (detailed) {
+      // panneau de sortie, horloge arrêtée, tableau blanc, armoire
+      this.rectZ(ELEVATOR_X - 9, baseY + 80, ELEVATOR_X + 9, baseY + 86, BACK_Z - 1, 'rgb(40,170,90)');
+      this.glow(ELEVATOR_X, baseY + 83, BACK_Z - 3, 26, [60, 220, 120], 0.25);
+      const c = this.project(-96, baseY + 78, BACK_Z - 1);
+      if (c.d > NEAR) {
+        const g = this.g;
+        g.fillStyle = this.fogMix([214, 214, 206], pd);
+        g.beginPath();
+        g.arc(c.x, c.y, 7 * c.s, 0, Math.PI * 2);
+        g.fill();
+        g.strokeStyle = this.fogMix([30, 30, 30], pd);
+        g.lineWidth = Math.max(0.6, 0.9 * c.s);
+        g.beginPath();
+        // 7 h 07, toujours
+        g.moveTo(c.x, c.y);
+        g.lineTo(c.x + Math.sin((7 / 12) * Math.PI * 2) * 4 * c.s, c.y - Math.cos((7 / 12) * Math.PI * 2) * 4 * c.s);
+        g.moveTo(c.x, c.y);
+        g.lineTo(c.x + Math.sin((7 / 60) * Math.PI * 2) * 6 * c.s, c.y - Math.cos((7 / 60) * Math.PI * 2) * 6 * c.s);
+        g.stroke();
+      }
+      this.rectZ(80, baseY + 52, 150, baseY + 84, BACK_Z - 1, this.fogMix([200, 204, 200], pd));
+      for (let i = 0; i < 4; i++) this.rectZ(86, baseY + 76 - i * 6, 86 + 20 + ((i * 17) % 34), baseY + 77 - i * 6, BACK_Z - 1.2, this.fogMix([120, 130, 150], pd));
+      this.rectZ(-306, baseY, -276, baseY + 58, BACK_Z - 4, this.fogMix([96, 100, 102], pd));
+      for (let i = 1; i < 4; i++) this.rectZ(-306, baseY + i * 14.5, -276, baseY + i * 14.5 + 0.8, BACK_Z - 4.2, this.fogMix([60, 64, 66], pd));
+    }
     if (lightOn) {
       for (const nx of [-200, 0, 200]) {
         this.rectZ(nx - 26, top - 4, nx + 26, top - 1, 36, 'rgb(235,240,236)');
-        this.glow(nx, top - 30, 36, 90, [200, 215, 210], 0.07);
+        // cône de lumière sous le néon
+        const t0 = this.project(nx, top - 4, 36);
+        const f0 = this.project(nx, baseY, 36);
+        if (t0.d > NEAR) {
+          const g = this.g;
+          const grad = g.createLinearGradient(0, t0.y, 0, f0.y);
+          grad.addColorStop(0, 'rgba(220,232,226,0.10)');
+          grad.addColorStop(1, 'rgba(220,232,226,0)');
+          g.globalCompositeOperation = 'lighter';
+          g.fillStyle = grad;
+          g.beginPath();
+          g.moveTo(t0.x - 26 * t0.s, t0.y);
+          g.lineTo(t0.x + 26 * t0.s, t0.y);
+          g.lineTo(f0.x + 75 * f0.s, f0.y);
+          g.lineTo(f0.x - 75 * f0.s, f0.y);
+          g.fill();
+          g.globalCompositeOperation = 'source-over';
+        }
+      }
+      if (detailed) {
+        // poussière en suspension dans la lumière
+        const g = this.g;
+        g.globalCompositeOperation = 'lighter';
+        for (const d of WORLD.dust) {
+          const y = baseY + ((d.y + time * 0.004 * d.v) % 92) + 4;
+          const p = this.project(d.x + Math.sin(time / 1500 + d.p) * 6, y, d.z);
+          if (p.d < NEAR) continue;
+          g.fillStyle = `rgba(230,236,230,${0.25 + Math.sin(time / 800 + d.p) * 0.12})`;
+          g.fillRect(p.x, p.y, Math.max(0.8, 0.5 * p.s), Math.max(0.8, 0.5 * p.s));
+        }
+        g.globalCompositeOperation = 'source-over';
       }
     }
   }
@@ -364,7 +391,7 @@ export class OfficeScene {
   private closedFloor(n: number, time: number): void {
     const base = (n - 1) * FLOOR_H;
     const depth = Math.min(1, (n - 2) / 4);
-    this.room(base, [70, 76, 80], false);
+    this.room(base, [70, 76, 80], false, time);
     for (const gl of WORLD.glows.filter((x) => x.floor === n)) {
       const on = Math.sin(time / 900 + gl.flicker * 40) > -0.85 || gl.flicker > 0.3;
       if (on) this.glow(gl.x, base + 46, 30, 55, gl.c, 0.16 * (1 - depth * 0.6));
@@ -372,17 +399,18 @@ export class OfficeScene {
     for (const sh of WORLD.shadows.filter((x) => x.floor === n)) {
       const x = sh.x + Math.sin(time / 2600 + sh.x) * 60;
       const p = this.project(x, base, 40);
-      if (p.d > NEAR) drawPerson(this.g, p.x, p.y, p.s, { pose: 'stand', walk: time / 300, alpha: 0.35 }, 'rgb(30,34,37)');
+      if (p.d > NEAR) drawWalker(this.g, p.x, p.y, p.s, time / 300, Math.cos(time / 2600 + sh.x) > 0 ? 1 : -1, { fog: 0.3, alpha: 0.35 });
     }
     // vitre dépolie et stores en façade ; la lumière filtre à travers
     const pd = this.project(0, base + 50, 0).d;
-    this.rectZ(-HALF_W, base, HALF_W, base + FLOOR_H, -1, `rgba(${[88, 100, 106].join(',')},${0.6 + depth * 0.3})`);
+    this.rectZ(-HALF_W, base, HALF_W, base + FLOOR_H, -1, `rgba(88,100,106,${0.6 + depth * 0.3})`);
     for (let y = base + 6; y < base + FLOOR_H; y += 7) this.rectZ(-HALF_W, y, HALF_W, y + 1.2, -1.2, this.fogMix([60, 68, 72], pd));
     for (const gl of WORLD.glows.filter((x) => x.floor === n)) this.glow(gl.x, base + 46, -2, 40, gl.c, 0.07 * (1 - depth * 0.7));
   }
 
   private slab(y: number): void {
     this.rectZ(-HALF_W - 8, y - 7, HALF_W + 8, y, 0, this.fogMix([30, 35, 38], this.project(0, y, 0).d));
+    this.rectZ(-HALF_W - 8, y - 1, HALF_W + 8, y, -0.2, this.fogMix([58, 64, 68], this.project(0, y, 0).d));
   }
 
   draw(st: SceneState, time: number, bars: number): void {
@@ -409,28 +437,28 @@ export class OfficeScene {
     );
 
     // sous-sol : une seule lueur, pas plus
-    this.room(-110, [22, 25, 27], false);
+    this.room(-110, [22, 25, 27], false, time);
     this.glow(200, -70, BACK_Z - 5, 70, [242, 193, 78], 0.2 + Math.sin(time / 700) * 0.04);
     this.rectZ(188, -110, 212, -62, BACK_Z - 1, 'rgb(150,120,52)');
 
     for (let n = 10; n >= 2; n--) this.closedFloor(n, time);
 
     // l'étage du joueur, ouvert
-    this.room(0, [150, 150, 140], true);
-    DESK_X.forEach((x, i) => this.desk(x, 0, SCREEN[i], i < st.litDesks, !!st.highlight?.includes(i)));
-    for (const a of st.actors) this.actor(a);
+    this.room(0, [150, 150, 140], true, time, true);
+    DESK_X.forEach((x, i) => this.desk(x, 0, SCREEN[i], i < st.litDesks, !!st.highlight?.includes(i), time));
+    for (const a of st.actors) this.actor(a, time);
 
     for (let n = 0; n <= 10; n++) this.slab(n * FLOOR_H);
     this.slab(-110);
     for (const px of [-HALF_W - 4, HALF_W + 4]) this.rectZ(px - 7, -110, px + 7, 10 * FLOOR_H + 6, -6, this.fogMix([22, 26, 28], this.project(px, 400, -6).d));
 
     // les étages supérieurs se perdent dans le noir
-    const top = this.project(0, 4 * FLOOR_H, 0).y;
-    const dark = g.createLinearGradient(0, top - H * 0.3, 0, top + H * 0.05);
+    const topY = this.project(0, 4 * FLOOR_H, 0).y;
+    const dark = g.createLinearGradient(0, topY - H * 0.3, 0, topY + H * 0.05);
     dark.addColorStop(0, 'rgba(8,11,13,0.97)');
     dark.addColorStop(1, 'rgba(8,11,13,0)');
     g.fillStyle = dark;
-    g.fillRect(0, 0, W, Math.max(0, top + H * 0.05));
+    g.fillRect(0, 0, W, Math.max(0, topY + H * 0.05));
 
     const mist = g.createLinearGradient(0, H * 0.55, 0, H);
     mist.addColorStop(0, 'rgba(118,132,138,0)');
@@ -442,7 +470,7 @@ export class OfficeScene {
 
   /** Point écran d'un bureau de l'étage 1, pour poser une étiquette ou tester un toucher. */
   deskOnScreen(i: number): { x: number; y: number; r: number } {
-    const p = this.project(DESK_X[i], MON.y, MON.z);
+    const p = this.project(DESK_X[i], MON.y + 14, MON.z);
     return { x: p.x, y: p.y, r: 45 * p.s };
   }
 }

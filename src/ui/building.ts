@@ -42,9 +42,9 @@ export function openBuilding(stage: HTMLElement, s: GameState, current: number, 
   const actors = (t: number): Actor[] => {
     const out: Actor[] = [];
     // les autres postes déjà tenus restent occupés
-    for (let i = 0; i <= s.poste; i++) if (i !== current && i !== seat) out.push({ x: DESK_X[i], z: SEAT_Z, pose: 'sit' });
+    for (let i = 0; i <= s.poste; i++) if (i !== current && i !== seat) out.push({ x: DESK_X[i], z: SEAT_Z, pose: 'sit', seed: i + 1 });
     const standing = !closing || (walk && t < walk.end);
-    out.push({ x: playerX(t), z: standing ? 6 : SEAT_Z, pose: standing ? 'stand' : 'sit', accent: PLAYER_ACCENT, grade: s.poste, walk: walk ? t / 95 : 0 });
+    out.push({ x: playerX(t), z: standing ? 6 : SEAT_Z, pose: standing ? 'stand' : 'sit', accent: PLAYER_ACCENT, grade: s.poste, walk: walk && t < walk.end ? t / 95 : 0, facing: walk && walk.to < walk.from ? -1 : 1, seed: 7 });
     return out;
   };
 
@@ -56,7 +56,8 @@ export function openBuilding(stage: HTMLElement, s: GameState, current: number, 
       // l'étiquette reste dans l'écran, même pour les postes au bord
       const half = el.offsetWidth / 2;
       const x = Math.min(Math.max(p.x, half + 6), scene.W - half - 6);
-      el.style.transform = `translate(${x}px, ${p.y - p.r * 1.6}px) translate(-50%, -100%)`;
+      el.style.transform = `translate(${x}px, ${p.y - p.r * 0.9}px) translate(-50%, -100%)`;
+      el.style.setProperty('--tail', `${p.x - x}px`);
     });
   };
 
@@ -64,7 +65,13 @@ export function openBuilding(stage: HTMLElement, s: GameState, current: number, 
     ...POSTES.map((p, i) => {
       const open = i <= s.poste;
       const sub = i === current ? 'Votre poste actuel' : i < s.poste ? `Tenu par ${occupant(s, i)}` : 'Accès réservé';
-      return h('button', { class: `desk-label ${open ? '' : 'locked'} ${i === current ? 'here' : ''}`, 'data-i': String(i), disabled: !open, onclick: () => pick(i) }, h('b', null, `${p.grade}`), h('small', null, sub));
+      return h(
+        'button',
+        { class: `desk-label ${open ? '' : 'locked'} ${i === current ? 'here' : ''}`, 'data-i': String(i), disabled: !open, onclick: () => pick(i) },
+        h('span', { class: 'dl-ref' }, `POSTE 117-${'ABC'[i]}`),
+        h('b', null, open ? p.grade : 'Accès réservé'),
+        h('small', null, open ? sub : 'Badge insuffisant'),
+      );
     }),
   );
 

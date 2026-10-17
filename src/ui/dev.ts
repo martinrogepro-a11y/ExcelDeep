@@ -5,6 +5,7 @@ export interface DevApi {
   previewPromotion(): void;
   openBuilding(): void;
   replayIntroFilm(): void;
+  replayCrt(): void;
   addCredits(n: number): void;
   setSpeed(n: number): void;
   speed(): number;
@@ -45,7 +46,7 @@ export function openDevMenu(stage: HTMLElement, api: DevApi): void {
     'div',
     { class: 'dev-body' },
     h('h3', null, 'Cinématiques'),
-    h('div', { class: 'row' }, btn('Dézoom de promotion', api.previewPromotion), btn('Se lever du poste', api.openBuilding), btn('Film d’accueil', api.replayIntroFilm)),
+    h('div', { class: 'row' }, btn('Dézoom de promotion', api.previewPromotion), btn('Se lever du poste', api.openBuilding), btn('Film d’accueil', api.replayIntroFilm), btn('Allumage de l’écran', api.replayCrt)),
     h('h3', null, 'Aller au poste'),
     h('div', { class: 'row' }, ...POSTES.map((p, i) => btn(`${i + 1}. ${p.grade}`, () => api.gotoPoste(i)))),
     h('h3', null, 'Crédits'),

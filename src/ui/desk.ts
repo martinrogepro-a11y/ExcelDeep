@@ -136,7 +136,9 @@ export class Desk {
       const b = (e.target as Element).closest('button');
       if (b && !b.closest('.case, .tariff, .courier, .bagchip, .express')) sfx('click');
     });
-    this.root.replaceChildren(this.root2);
+    // on garde les cinématiques en cours par-dessus : elles s'effacent toutes seules
+    for (const n of [...this.root.children]) if (!n.classList.contains('dezoom')) n.remove();
+    this.root.prepend(this.root2);
     this.setView(this.lastTask());
     this.nextExpress = this.ctx.now() + 20_000;
   }
